@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Accelerate pyitm coverage computation by (a) JIT-compiling numeric loops with Numba and (b) replacing `ThreadPoolExecutor` with `ProcessPoolExecutor` to bypass the GIL on pure-Python ITM calls.
+**Goal:** Accelerate nowires coverage computation by (a) JIT-compiling numeric loops with Numba and (b) replacing `ThreadPoolExecutor` with `ProcessPoolExecutor` to bypass the GIL on pure-Python ITM calls.
 
 **Architecture:** New `math_kernels.py` provides two `@numba.jit` functions consumed by `p2p.py` and `coverage.py`. Coverage grid computation switches to a persistent `ProcessPoolExecutor` (created at FastAPI startup) that receives pre-extracted PFL arrays from the main process. Coverage radius uses a per-request `ProcessPoolExecutor` with a pool initializer to share the elevation grid array once rather than pickling it per task.
 
@@ -74,7 +74,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/bortre/03-final/pyitm
+cd /home/bortre/03-final/nowires
 git add backend/requirements.txt backend/tests/__init__.py backend/tests/conftest.py
 git commit -m "feat: add numba dependency and test scaffolding"
 ```
@@ -169,7 +169,7 @@ def test_fresnel_matches_scalar_functions():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/test_math_kernels.py -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/test_math_kernels.py -v`
 
 Expected: `ImportError` or `ModuleNotFoundError` — `math_kernels` does not exist yet.
 
@@ -234,14 +234,14 @@ def fresnel_profile_analysis(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/test_math_kernels.py::test_fresnel_arrays_have_correct_shape tests/test_math_kernels.py::test_fresnel_flat_terrain_no_blockage tests/test_math_kernels.py::test_fresnel_matches_scalar_functions -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/test_math_kernels.py::test_fresnel_arrays_have_correct_shape tests/test_math_kernels.py::test_fresnel_flat_terrain_no_blockage tests/test_math_kernels.py::test_fresnel_matches_scalar_functions -v`
 
 Expected: 3 passed. (First run may be slow due to Numba JIT compilation; subsequent runs use cache.)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/bortre/03-final/pyitm
+cd /home/bortre/03-final/nowires
 git add backend/app/math_kernels.py backend/tests/test_math_kernels.py
 git commit -m "feat: add fresnel_profile_analysis JIT kernel"
 ```
@@ -357,7 +357,7 @@ def test_apply_coverage_colors_matches_prx_to_color():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/test_math_kernels.py::test_apply_coverage_colors_excellent_signal -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/test_math_kernels.py::test_apply_coverage_colors_excellent_signal -v`
 
 Expected: `ImportError` — `apply_coverage_colors` not defined yet.
 
@@ -405,14 +405,14 @@ def apply_coverage_colors(
 
 - [ ] **Step 4: Run all math_kernels tests**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/test_math_kernels.py -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/test_math_kernels.py -v`
 
 Expected: all 8 tests pass.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/bortre/03-final/pyitm
+cd /home/bortre/03-final/nowires
 git add backend/app/math_kernels.py backend/tests/test_math_kernels.py
 git commit -m "feat: add apply_coverage_colors JIT kernel"
 ```
@@ -619,20 +619,20 @@ def analyze_p2p(
 
 - [ ] **Step 2: Verify the module parses correctly**
 
-Run: `python3 -c "import ast; ast.parse(open('/home/bortre/03-final/pyitm/backend/app/p2p.py').read()); print('Syntax OK')"`
+Run: `python3 -c "import ast; ast.parse(open('/home/bortre/03-final/nowires/backend/app/p2p.py').read()); print('Syntax OK')"`
 
 Expected: `Syntax OK`
 
 - [ ] **Step 3: Run math_kernels tests to confirm nothing regressed**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/test_math_kernels.py -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/test_math_kernels.py -v`
 
 Expected: all 8 pass.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /home/bortre/03-final/pyitm
+cd /home/bortre/03-final/nowires
 git add backend/app/p2p.py
 git commit -m "perf: use fresnel_profile_analysis JIT kernel in p2p.py"
 ```
@@ -734,7 +734,7 @@ def test_itm_worker_applies_antenna_gain_adjustment():
 
 - [ ] **Step 2: Run tests to confirm they fail**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/test_coverage_workers.py -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/test_coverage_workers.py -v`
 
 Expected: `AttributeError` — `_itm_worker` not found in `coverage` module.
 
@@ -1236,26 +1236,26 @@ def compute_coverage(
 
 - [ ] **Step 4: Run worker tests**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/test_coverage_workers.py -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/test_coverage_workers.py -v`
 
 Expected: 4 tests pass.
 
 - [ ] **Step 5: Run all tests**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/ -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/ -v`
 
 Expected: all 12 tests pass (8 from math_kernels + 4 from coverage_workers).
 
 - [ ] **Step 6: Verify syntax**
 
-Run: `python3 -c "import ast; ast.parse(open('/home/bortre/03-final/pyitm/backend/app/coverage.py').read()); print('OK')"`
+Run: `python3 -c "import ast; ast.parse(open('/home/bortre/03-final/nowires/backend/app/coverage.py').read()); print('OK')"`
 
 Expected: `OK`
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /home/bortre/03-final/pyitm
+cd /home/bortre/03-final/nowires
 git add backend/app/coverage.py backend/tests/test_coverage_workers.py
 git commit -m "perf: ProcessPoolExecutor coverage grid + Numba color mapping"
 ```
@@ -1338,14 +1338,14 @@ def test_init_radius_pool_sets_globals():
 
 - [ ] **Step 2: Run all tests**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/ -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/ -v`
 
 Expected: all 15 tests pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /home/bortre/03-final/pyitm
+cd /home/bortre/03-final/nowires
 git add backend/tests/test_coverage_workers.py
 git commit -m "test: add radius worker unit tests"
 ```
@@ -1542,13 +1542,13 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Verify syntax**
 
-Run: `python3 -c "import ast; ast.parse(open('/home/bortre/03-final/pyitm/backend/app/main.py').read()); print('OK')"`
+Run: `python3 -c "import ast; ast.parse(open('/home/bortre/03-final/nowires/backend/app/main.py').read()); print('OK')"`
 
 Expected: `OK`
 
 - [ ] **Step 3: Run all tests**
 
-Run: `cd /home/bortre/03-final/pyitm/backend && python3 -m pytest tests/ -v`
+Run: `cd /home/bortre/03-final/nowires/backend && python3 -m pytest tests/ -v`
 
 Expected: all 15 tests pass.
 
@@ -1556,7 +1556,7 @@ Expected: all 15 tests pass.
 
 Run:
 ```bash
-cd /home/bortre/03-final/pyitm/backend && python3 -c "
+cd /home/bortre/03-final/nowires/backend && python3 -c "
 from app.p2p import analyze_p2p
 from app.coverage import compute_coverage, compute_coverage_radius, _itm_worker, _radius_worker
 from app.math_kernels import fresnel_profile_analysis, apply_coverage_colors
@@ -1569,7 +1569,7 @@ Expected: `All imports OK`
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/bortre/03-final/pyitm
+cd /home/bortre/03-final/nowires
 git add backend/app/main.py
 git commit -m "feat: lifespan ProcessPoolExecutor for coverage grid endpoint"
 ```

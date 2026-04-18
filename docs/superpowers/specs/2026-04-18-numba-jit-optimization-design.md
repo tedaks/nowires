@@ -1,7 +1,7 @@
-# pyitm Numba JIT Optimization Design
+# nowires Numba JIT Optimization Design
 
 **Date:** 2026-04-18
-**Scope:** `/home/bortre/03-final/pyitm` only — the `itm` package is not modified.
+**Scope:** `/home/bortre/03-final/nowires` only — the `itm` package is not modified.
 
 ---
 
@@ -14,7 +14,7 @@ Expected gains:
 - Coverage radius: similar, turning 7200 sequential ITM calls into 360 parallel tasks
 - P2P and color mapping: ~5–15% from Numba (secondary)
 
-**Constraint:** The ITM prediction kernel (`itm.predict_p2p`) is pure Python and cannot be Numba JIT-compiled from the application layer. The ceiling on Numba gains within pyitm is modest; ProcessPoolExecutor is the primary win.
+**Constraint:** The ITM prediction kernel (`itm.predict_p2p`) is pure Python and cannot be Numba JIT-compiled from the application layer. The ceiling on Numba gains within nowires is modest; ProcessPoolExecutor is the primary win.
 
 ---
 
