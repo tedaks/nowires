@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITM Philippines - Radio Planning</title>
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+    <div id="app">
+        <div id="sidebar">
+            <div class="logo">
+                <h2>ITM PH</h2>
+                <p>Radio Planning</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="p2p">Point-to-Point</button>
+                <button class="tab-btn" data-tab="coverage">Coverage</button>
+            </div>
+
+            <div id="p2p-tab" class="tab-content active">
+                <h3>Link Analysis</h3>
+                <p class="help-text">Click on the map to place TX (green) then RX (red).</p>
+
+                <div class="input-group">
+                    <label>TX Location</label>
+                    <div class="coord-display" id="tx-coords">Not selected</div>
+                </div>
+                <div class="row2">
+                    <div class="input-group">
+                        <label>TX Height (m)</label>
+                        <input type="number" id="tx-h" value="30" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>RX Height (m)</label>
+                        <input type="number" id="rx-h" value="10" step="1">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>RX Location</label>
+                    <div class="coord-display" id="rx-coords">Not selected</div>
+                </div>
+
+                <div class="row2">
+                    <div class="input-group">
+                        <label>Freq (MHz)</label>
+                        <input type="number" id="freq" value="450" min="20" max="20000" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>Polarization</label>
+                        <select id="polarization">
+                            <option value="0">Vertical</option>
+                            <option value="1">Horizontal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Climate</label>
+                    <select id="climate">
+                        <option value="0">Equatorial</option>
+                        <option value="1" selected>Continental Subtropical</option>
+                        <option value="2">Maritime Subtropical</option>
+                        <option value="3">Desert</option>
+                        <option value="4">Continental Temperate</option>
+                        <option value="5">Maritime Temperate (land)</option>
+                        <option value="6">Maritime Temperate (sea)</option>
+                    </select>
+                </div>
+
+                <details class="advanced">
+                    <summary>Link Budget</summary>
+                    <div class="row2">
+                        <div class="input-group">
+                            <label>TX Power (dBm)</label>
+                            <input type="number" id="tx-power" value="43" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Cable Loss (dB)</label>
+                            <input type="number" id="cable-loss" value="2" step="0.5">
+                        </div>
+                    </div>
+                    <div class="row2">
+                        <div class="input-group">
+                            <label>TX Gain (dBi)</label>
+                            <input type="number" id="tx-gain" value="8" step="0.5">
+                        </div>
+                        <div class="input-group">
+                            <label>RX Gain (dBi)</label>
+                            <input type="number" id="rx-gain" value="2" step="0.5">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>RX Sensitivity (dBm)</label>
+                        <input type="number" id="rx-sens" value="-100" step="1">
+                    </div>
+                </details>
+
+                <details class="advanced">
+                    <summary>ITM Statistics</summary>
+                    <div class="row3">
+                        <div class="input-group">
+                            <label>Time %</label>
+                            <input type="number" id="time-pct" value="50" min="1" max="99" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Location %</label>
+                            <input type="number" id="loc-pct" value="50" min="1" max="99" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Situation %</label>
+                            <input type="number" id="sit-pct" value="50" min="1" max="99" step="1">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>K-factor (earth curvature)</label>
+                        <select id="k-factor">
+                            <option value="0.6667">0.67 (sub-refractive)</option>
+                            <option value="1.0">1.0 (true earth)</option>
+                            <option value="1.3333" selected>4/3 (standard)</option>
+                            <option value="1.75">1.75 (super-refractive)</option>
+                        </select>
+                    </div>
+                </details>
+
+                <button class="btn primary" id="analyze-btn">Analyze Path</button>
+
+                <div id="p2p-result" class="result-box hidden">
+                    <div class="result-header">Results</div>
+                    <div id="result-content"></div>
+                </div>
+            </div>
+
+            <div id="coverage-tab" class="tab-content">
+                <h3>Area Coverage</h3>
+                <p class="help-text">Per-pixel ITM with full link budget. First run in a new area fetches terrain (slow); subsequent runs use the cache.</p>
+
+                <div class="input-group">
+                    <label>TX Location</label>
+                    <div class="coord-display" id="cov-tx-coords">Not selected</div>
+                </div>
+
+                <div class="row2">
+                    <div class="input-group">
+                        <label>TX Height (m)</label>
+                        <input type="number" id="cov-tx-h" value="30" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>RX Height (m)</label>
+                        <input type="number" id="cov-rx-h" value="10" step="1">
+                    </div>
+                </div>
+
+                <div class="row2">
+                    <div class="input-group">
+                        <label>Freq (MHz)</label>
+                        <input type="number" id="cov-freq" value="450" min="20" max="20000" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>TX Power (dBm)</label>
+                        <input type="number" id="cov-tx-power" value="43" step="1">
+                    </div>
+                </div>
+
+                <div class="row2">
+                    <div class="input-group">
+                        <label>TX Gain (dBi)</label>
+                        <input type="number" id="cov-tx-gain" value="8" step="0.5">
+                    </div>
+                    <div class="input-group">
+                        <label>RX Gain (dBi)</label>
+                        <input type="number" id="cov-rx-gain" value="2" step="0.5">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>RX Sensitivity (dBm)</label>
+                    <input type="number" id="cov-rx-sens" value="-100" step="1">
+                </div>
+
+                <div class="input-group">
+                    <label>Antenna Pattern</label>
+                    <select id="cov-ant-pattern">
+                        <option value="omni" selected>Omnidirectional</option>
+                        <option value="dir">Directional</option>
+                    </select>
+                </div>
+                <div class="row2" id="cov-ant-dir-row" style="display:none">
+                    <div class="input-group">
+                        <label>Azimuth (°)</label>
+                        <input type="number" id="cov-ant-az" value="0" min="0" max="359" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>Beamwidth (°)</label>
+                        <input type="number" id="cov-ant-bw" value="90" min="10" max="359" step="5">
+                    </div>
+                </div>
+
+                <button class="btn primary" id="compute-radius-btn" style="width:100%; margin-bottom:12px;">Compute Coverage Radius</button>
+
+                <div id="computed-radius" class="result-box hidden" style="margin-bottom:12px;">
+                    <div class="result-header">Coverage Radius (from Link Budget)</div>
+                    <div style="padding:8px; font-size:12px;">
+                        <div><strong>Average:</strong> <span id="radius-avg">—</span> km</div>
+                        <div><strong>Range:</strong> <span id="radius-min">—</span>–<span id="radius-max">—</span> km</div>
+                        <div style="margin-top:8px; font-size:11px; color:#888;">Computed per bearing; varies due to terrain</div>
+                    </div>
+                </div>
+
+                <div class="row2">
+                    <div class="input-group">
+                        <label>Output Pixels</label>
+                        <select id="cov-grid">
+                            <option value="48">48 (fast)</option>
+                            <option value="96">96 (balanced)</option>
+                            <option value="144">144 (detailed)</option>
+                            <option value="192" selected>192 (standard)</option>
+                            <option value="256">256 (high)</option>
+                            <option value="384">384 (ultra)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Terrain Detail</label>
+                        <select id="cov-terrain">
+                            <option value="600">Coarse (~600m)</option>
+                            <option value="300" selected>Standard (~300m)</option>
+                            <option value="150">Fine (~150m, slow 1st fetch)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Polarization</label>
+                    <select id="cov-polarization">
+                        <option value="0">Vertical</option>
+                        <option value="1">Horizontal</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Climate</label>
+                    <select id="cov-climate">
+                        <option value="0">Equatorial</option>
+                        <option value="1" selected>Continental Subtropical</option>
+                        <option value="2">Maritime Subtropical</option>
+                        <option value="3">Desert</option>
+                        <option value="4">Continental Temperate</option>
+                        <option value="5">Maritime Temperate (land)</option>
+                        <option value="6">Maritime Temperate (sea)</option>
+                    </select>
+                </div>
+
+                <details class="advanced">
+                    <summary>Cable Loss & Details</summary>
+                    <div class="input-group">
+                        <label>Cable Loss (dB)</label>
+                        <input type="number" id="cov-cable-loss" value="2" step="0.5">
+                    </div>
+                </details>
+
+                <details class="advanced">
+                    <summary>Reliability</summary>
+                    <div class="row3">
+                        <div class="input-group">
+                            <label>Time %</label>
+                            <input type="number" id="cov-time-pct" value="50" min="1" max="99" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Location %</label>
+                            <input type="number" id="cov-loc-pct" value="50" min="1" max="99" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Situation %</label>
+                            <input type="number" id="cov-sit-pct" value="50" min="1" max="99" step="1">
+                        </div>
+                    </div>
+                </details>
+
+                <button class="btn primary" id="coverage-btn">Generate Coverage</button>
+
+                <div id="coverage-result" class="result-box hidden">
+                    <div class="result-header">Coverage Stats</div>
+                    <div id="coverage-status"></div>
+                    <div style="margin-top:12px; padding:8px; background:rgba(255,255,255,0.05); border-radius:4px;">
+                        <label style="display:block; margin-bottom:6px; font-size:12px;">Overlay Opacity</label>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="range" id="coverage-opacity" min="0" max="1" step="0.1" value="0.7" style="flex:1;">
+                            <span id="coverage-opacity-label" style="font-size:12px; min-width:30px;">70%</span>
+                        </div>
+                    </div>
+                    <button class="btn" id="save-site-btn" style="width:100%; margin-top:12px;">Save Site to Comparison</button>
+                </div>
+            </div>
+
+            <div id="cov-legend" class="colorbar hidden">
+                <h4>Received Power (dBm)</h4>
+                <div id="cov-legend-items"></div>
+            </div>
+        </div>
+
+        <div id="map-area">
+            <div id="sites-panel" class="hidden" style="position:absolute; top:10px; right:10px; width:300px; background:rgba(0,0,0,0.8); border-radius:8px; padding:12px; z-index:10; max-height:80vh; overflow-y:auto; color:#fff; font-size:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3 style="margin:0; color:#fff;">Sites Coverage</h3>
+                    <button id="sites-close" class="btn-close" style="color:#fff;">&times;</button>
+                </div>
+                <div id="sites-list" style="margin-bottom:12px;"></div>
+                <div id="sites-stats" style="background:rgba(255,255,255,0.1); padding:8px; border-radius:4px; margin-bottom:12px; font-size:11px;"></div>
+                <button class="btn" id="clear-sites-btn" style="width:100%;">Clear All Sites</button>
+            </div>
+
+            <div id="chart-panel" class="hidden">
+                <div id="chart-header">
+                    <h3>Terrain Profile</h3>
+                    <div id="chart-flags"></div>
+                    <button id="chart-close" class="btn-close">&times;</button>
+                </div>
+                <div id="profile-chart"></div>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="static/app.js"></script>
+</body>
+</html>

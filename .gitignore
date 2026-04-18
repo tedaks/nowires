@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.so
+*.egg-info/
+.venv/
+venv/
+env/
+data/srtm1/*.hgt
+data/srtm1/*.zip
+*.png
+.DS_Store
+server.log
+
+.env
+*.npz
