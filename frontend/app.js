@@ -447,7 +447,6 @@ async function runP2PAnalysis() {
         displayP2PResult(result);
         renderProfileChart(result);
         drawHorizons(result.horizons || [], txCoords, rxCoords, result.distance_m);
-    clearInterval(progressInterval);
     } catch (err) {
         alert('Analysis failed: ' + err.message);
     } finally {
@@ -464,12 +463,12 @@ async function runCoverage() {
 
     const btn = document.getElementById('coverage-btn');
     btn.textContent = 'Generating';
-        let dotCount = 0;
-        const progressInterval = setInterval(() => {
-            dotCount = (dotCount + 1) % 4;
-            btn.textContent = 'Generating' + '.'.repeat(dotCount);
-        }, 500);
     btn.disabled = true;
+    let dotCount = 0;
+    const progressInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 4;
+        btn.textContent = 'Generating' + '.'.repeat(dotCount);
+    }, 500);
 
     try {
         const pattern = document.getElementById('cov-ant-pattern').value;
@@ -529,7 +528,6 @@ async function runCoverage() {
                 <div><span>Cache</span><span>${result.from_cache ? 'hit' : 'miss'}</span></div>
             </div>
         `;
-    clearInterval(progressInterval);
     } catch (err) {
         alert('Coverage generation failed: ' + err.message);
     } finally {

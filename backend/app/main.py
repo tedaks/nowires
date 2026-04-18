@@ -5,7 +5,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -40,9 +40,7 @@ def _warmup_numba():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _warmup_numba()
-    app.state.pool = ProcessPoolExecutor(max_workers=os.cpu_count() or 1)
     yield
-    app.state.pool.shutdown(wait=True)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -131,7 +129,7 @@ async def p2p_endpoint(req: P2PRequest):
 
 
 @app.post("/api/coverage")
-async def coverage_endpoint(req: CoverageRequest, request: Request):
+async def coverage_endpoint(req: CoverageRequest):
     return compute_coverage(
         tx_lat=req.tx["lat"],
         tx_lon=req.tx["lon"],
@@ -156,7 +154,6 @@ async def coverage_endpoint(req: CoverageRequest, request: Request):
         time_pct=req.time_pct,
         location_pct=req.location_pct,
         situation_pct=req.situation_pct,
-        pool=request.app.state.pool,
     )
 
 

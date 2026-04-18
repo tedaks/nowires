@@ -457,7 +457,6 @@ def compute_coverage(
     situation_pct: float = 50.0,
     terrain_spacing_m: float = 300.0,
     elev_grid_n: int | None = None,
-    pool: ProcessPoolExecutor | None = None,
 ) -> Dict[str, Any]:
     deg_per_m = 1.0 / 111320.0
     pad_deg = 2.0 * terrain_spacing_m * deg_per_m
@@ -561,17 +560,11 @@ def compute_coverage(
         "tx_lon": tx_lon,
     }
 
-    _own_pool = pool is None
-    if _own_pool:
-        pool = ProcessPoolExecutor(
-            max_workers=max(1, os.cpu_count() or 1),
-            initializer=_init_cov_pool,
-            initargs=(elev.data, grid_meta),
-        )
-    else:
-        # For shared pool, initialize grid data in this process too
-        _init_cov_pool(elev.data, grid_meta)
-
+    pool = ProcessPoolExecutor(
+        max_workers=max(1, os.cpu_count() or 1),
+        initializer=_init_cov_pool,
+        initargs=(elev.data, grid_meta),
+    )
     try:
         for result in pool.map(_itm_worker, tasks):
             if result is not None:
@@ -579,8 +572,7 @@ def compute_coverage(
                 loss_grid[i, j] = loss_db
                 prx_grid[i, j] = prx
     finally:
-        if _own_pool:
-            pool.shutdown(wait=True)
+        pool.shutdown(wait=True)
 
     rgba = np.zeros((grid_size, grid_size, 4), dtype=np.uint8)
     apply_coverage_colors(prx_grid, _THRESHOLDS, _COLORS, rgba)
