@@ -7,7 +7,7 @@ NoWires computes point-to-point path loss, terrain profiles with Fresnel zone an
 ## Features
 
 - **Point-to-Point Analysis**: Click two points on the map for TX and RX. The app plots a terrain profile with line-of-sight, 1st Fresnel zone, and 60% Fresnel zone, and reports ITM basic transmission loss with link budget.
-- **Area Coverage**: Place a transmitter and generate a color-coded coverage overlay showing signal strength over the area, with adjustable grid resolution up to 384×384.
+- **Area Coverage**: Place a transmitter and generate a color-coded coverage overlay showing signal strength over the area, with adjustable grid resolution up to 512×512.
 - **Coverage Radius**: Per-bearing radius estimation showing maximum, minimum, and average coverage distance.
 - **Multi-Site Comparison**: Save coverage results as named sites and overlay multiple transmitters with adjustable opacity.
 - **Directional Antennas**: Support for omnidirectional and directional antenna patterns with configurable azimuth and beamwidth.
@@ -80,24 +80,25 @@ nowires/
 ├── apps/
 │   ├── api/                     # FastAPI backend
 │   │   └── app/
-│   │       ├── main.py          # Server, CORS, rate limiting
+│   │       ├── main.py          # Server, CORS, rate limiting, endpoints
 │   │       ├── p2p.py           # Point-to-point analysis
-│   │       ├── coverage.py      # Coverage grid computation
-│   │       ├── coverage_radius.py  # Coverage radius estimation
-│   │       ├── coverage_workers.py # Parallel ITM workers
-│   │       ├── coverage_render.py  # PNG rendering
-│   │       ├── itm_bridge.py   # ITM wrapper
-│   │       ├── math_kernels.py # Numba JIT Fresnel kernels
-│   │       ├── elevation_grid.py   # Elevation caching
-│   │       ├── elevation_fetch.py  # GLO30/SRTM1/rasterio
-│   │       ├── signal_levels.py # Signal-to-color mapping
-│   │       ├── terrain.py       # Haversine, profile generation
-│   │       └── antenna.py      # Antenna gain patterns
-│   └── web/                     # Next.js 16 frontend
+│   │       ├── coverage.py      # Coverage grid computation + PNG cache
+│   │       ├── coverage_radius.py  # Per-bearing coverage radius
+│   │       ├── coverage_workers.py # ProcessPool ITM workers
+│   │       ├── coverage_render.py  # PNG rendering + legend
+│   │       ├── itm_bridge.py    # pyitm wrapper
+│   │       ├── math_kernels.py  # Numba JIT Fresnel + color kernels
+│   │       ├── elevation_grid.py   # Elevation caching + bilinear sampling
+│   │       ├── elevation_fetch.py  # GLO30/SRTM1/rasterio fetching
+│   │       ├── signal_levels.py # dBm thresholds + colors + profile utils
+│   │       ├── terrain.py       # Haversine, bearing, profile generation
+│   │       ├── antenna.py       # Antenna gain patterns
+│   │       └── config.py        # Directory setup, env config
+│   └── web/                     # Next.js 16 + TypeScript frontend
 │       └── src/
 │           ├── app/             # Routes and error boundary
-│           ├── components/      # Map, P2P, Coverage panels
-│           └── lib/             # API client, types, utils
+│           ├── components/      # MapLibre map, P2P panel, Coverage panel
+│           └── lib/             # API client, types, utilities
 ├── data/                        # Runtime cache (gitignored)
 ├── .github/workflows/ci.yml     # CI pipeline
 └── LICENSE.md
@@ -106,14 +107,15 @@ nowires/
 ## Testing
 
 ```bash
-# Frontend unit tests
+# Frontend unit tests (vitest)
 npm --workspace apps/web run test
 
-# Backend tests
+# Backend tests (pytest)
 cd apps/api && pytest -v tests/
 
-# Full lint + typecheck + tests
-npm run lint && npm --workspace apps/web run typecheck && cd apps/api && ruff check . && ruff format --check . && pytest -v tests/
+# Full CI
+npm --workspace apps/web run lint && npm --workspace apps/web run typecheck && npm --workspace apps/web run build
+cd apps/api && ruff check . && ruff format --check . && pytest -v tests/
 ```
 
 ## Performance

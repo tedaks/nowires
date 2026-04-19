@@ -13,34 +13,41 @@ npm run dev:web          # Start Next.js dev server
 npm run build:web        # Production build
 npm run lint             # ESLint
 npm run typecheck        # TypeScript check (tsc --noEmit)
+npm run test:watch       # vitest watch mode
 npm run test:e2e         # Playwright E2E tests
 ```
 
 ### Backend
 ```bash
-cd apps/api
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000   # Dev server
-pytest -v tests/                                                # Unit + API tests
-ruff check .                                                    # Lint
-ruff format --check .                                           # Format check
+npm run dev:api          # Start FastAPI dev server (uvicorn)
+cd apps/api && pytest -v tests/            # Unit + API tests
+cd apps/api && ruff check . && ruff format --check .   # Lint + format
 ```
 
 ### Full CI
 ```bash
-cd apps/web && npm run lint && npm run typecheck && npm run build
+npm run lint && npm run typecheck && npm run build:web
+npm run dev:api & sleep 3 && npm run test:e2e
 cd apps/api && ruff check . && ruff format --check . && pytest -v tests/
 ```
 
 ## Architecture
 - `apps/api/app/main.py` — FastAPI app, endpoints `/api/p2p`, `/api/coverage`, `/api/coverage-radius`
 - `apps/api/app/p2p.py` — Point-to-point link analysis
-- `apps/api/app/coverage.py` — Coverage map computation with process pool
+- `apps/api/app/coverage.py` — Coverage map computation with ProcessPoolExecutor + PNG cache
+- `apps/api/app/coverage_radius.py` — Per-bearing coverage radius sweep
+- `apps/api/app/coverage_workers.py` — ITM workers for coverage and radius
+- `apps/api/app/coverage_render.py` — PNG rendering with signal legend
 - `apps/api/app/math_kernels.py` — Numba JIT Fresnel profile + coverage coloring
-- `apps/api/app/elevation_grid.py` — SRTM1/GLO30 terrain elevation
-- `apps/api/app/itm_bridge.py` — ITM library wrapper
+- `apps/api/app/elevation_grid.py` — SRTM1/GLO30 terrain elevation + bilinear sampling
+- `apps/api/app/elevation_fetch.py` — GLO30/SRTM1 rasterio fetching + API fallback
+- `apps/api/app/itm_bridge.py` — pyitm library wrapper
+- `apps/api/app/signal_levels.py` — dBm thresholds, colors, profile utilities
+- `apps/api/app/terrain.py` — Haversine, bearing, profile generation
+- `apps/api/app/antenna.py` — Antenna gain patterns
 - `apps/web/src/components/map/MapView.tsx` — MapLibre GL map component
 - `apps/web/src/components/p2p/` — P2P analysis panel + profile chart
-- `apps/web/src/components/coverage/` — Coverage panel + multi-site panel
+- `apps/web/src/components/coverage/` — Coverage panel + sites panel + legend
 
 ## Environment Variables
 Backend vars are in root `.env` (see `.env.example`). Key ones:
