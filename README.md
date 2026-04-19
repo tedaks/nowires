@@ -1,6 +1,6 @@
 # NoWires
 
-A radio propagation analysis system for the Philippines, powered by NTIA's Irregular Terrain Model (ITM).
+A radio propagation analysis system powered by NTIA's Irregular Terrain Model (ITM).
 
 NoWires computes point-to-point path loss, terrain profiles with Fresnel zone analysis, and area coverage predictions. It combines a FastAPI backend with Numba-accelerated computation and an interactive MapLibre frontend.
 

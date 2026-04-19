@@ -1,7 +1,7 @@
 # NoWires — Agent Instructions
 
 ## Project Overview
-Radio propagation analysis system for the Philippines using NTIA Irregular Terrain Model (ITM).
+Radio propagation analysis system using NTIA Irregular Terrain Model (ITM).
 - **Backend**: Python/FastAPI at `apps/api/` with Numba JIT acceleration
 - **Frontend**: Next.js 16 + TypeScript + Tailwind + MapLibre at `apps/web/`
 
