@@ -130,7 +130,9 @@ jobs:
         run: npx next start apps/web -p 3000 &
       - name: Wait for frontend
         run: npx wait-on http://localhost:3000 --timeout 30000
-      - run: npx playwright test
+      - name: Run E2E tests
+        run: npx playwright test
+        working-directory: apps/web
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
       - uses: actions/upload-artifact@v4
