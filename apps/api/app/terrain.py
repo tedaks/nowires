@@ -8,6 +8,8 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import List, Tuple
 
+from app.signal_levels import _interpolate_nans
+
 logger = logging.getLogger(__name__)
 
 _data_dir = Path(__file__).resolve().parent.parent.parent / "data" / "srtm1"
@@ -32,6 +34,7 @@ def _get_hgt():
 
             _hgt = Srtm1HeightMapCollection()
             if len(_hgt.height_maps) == 0:
+                logger.info("No SRTM HGT tiles loaded; will fall back to other elevation sources")
                 _hgt = None
         except Exception as e:
             logger.warning("Failed to initialize SRTM: %s", e)
@@ -73,7 +76,7 @@ def _batch_api_elevations(coords: List[Tuple[float, float]]) -> List[float]:
                     data = json.loads(resp.read())
                 for j, r in enumerate(data["results"]):
                     e = r["elevation"]
-                    val = float(e) if e is not None else 0.0
+                    val = float(e) if e is not None else float("nan")
                     all_elevations[batch_idx[j]] = val
                     lat, lon = batch[j]
                     _api_cache[(round(lat, 5), round(lon, 5))] = val
@@ -87,32 +90,14 @@ def _batch_api_elevations(coords: List[Tuple[float, float]]) -> List[float]:
                 else:
                     for j in range(len(batch)):
                         if all_elevations[batch_idx[j]] is None:
-                            all_elevations[batch_idx[j]] = 0.0
+                            all_elevations[batch_idx[j]] = float("nan")
 
         if start + _API_BATCH < len(uncached):
             time.sleep(_API_DELAY)
 
-    filled = [e if e is not None else 0.0 for e in all_elevations]
+    filled = [e if e is not None else float("nan") for e in all_elevations]
 
-    for i in range(len(filled)):
-        if filled[i] == 0.0:
-            left = right = None
-            for j in range(i - 1, -1, -1):
-                if filled[j] != 0.0:
-                    left = filled[j]
-                    break
-            for j in range(i + 1, len(filled)):
-                if filled[j] != 0.0:
-                    right = filled[j]
-                    break
-            if left is not None and right is not None:
-                filled[i] = (left + right) / 2.0
-            elif left is not None:
-                filled[i] = left
-            elif right is not None:
-                filled[i] = right
-
-    return filled
+    return _interpolate_nans(filled)
 
 
 def get_elevation(lat: float, lon: float) -> float:
@@ -163,13 +148,14 @@ def profile(
         for lat, lon in coords:
             try:
                 elev = hgt.get_altitude(lat, lon)
-                elevations.append(float(elev) if elev is not None else 0.0)
+                elevations.append(float(elev) if elev is not None else float("nan"))
             except Exception as e:
                 logger.debug("SRTM elevation failed at (%s, %s): %s", lat, lon, e)
-                elevations.append(0.0)
+                elevations.append(float("nan"))
     else:
         elevations = _batch_api_elevations(coords)
 
+    elevations = _interpolate_nans(elevations)
     results = []
     for i in range(len(coords)):
         t = i / n_steps

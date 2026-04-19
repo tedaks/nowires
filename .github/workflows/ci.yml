@@ -54,6 +54,21 @@ jobs:
       - run: npm ci
       - run: npm --workspace apps/web run build
 
+  vitest:
+    name: Frontend unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [eslint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm --workspace apps/web run test
+
   ruff:
     name: Python lint
     runs-on: ubuntu-latest
@@ -90,7 +105,7 @@ jobs:
     name: Playwright E2E
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [build, pytest]
+    needs: [build, vitest, pytest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

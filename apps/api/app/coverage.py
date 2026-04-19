@@ -9,6 +9,7 @@ level the way commercial radio planning tools do.
 """
 
 import hashlib
+import logging
 import math
 import os
 from collections import OrderedDict
@@ -20,6 +21,8 @@ import numpy as np
 from .coverage_render import build_coverage_tasks, render_coverage_result
 from .coverage_workers import _init_cov_pool, _itm_worker
 from .elevation_grid import ElevationGrid
+
+logger = logging.getLogger(__name__)
 
 _PNG_CACHE_MAX = 32
 _png_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
@@ -146,19 +149,27 @@ def compute_coverage(
         "tx_lat": tx_lat,
         "tx_lon": tx_lon,
     }
-    pool = ProcessPoolExecutor(
-        max_workers=max(1, os.cpu_count() or 1),
+    pixels_attempted = len(tasks)
+    pixels_failed = 0
+    with ProcessPoolExecutor(
+        max_workers=min(os.cpu_count() or 1, 4),
         initializer=_init_cov_pool,
         initargs=(elev.data, grid_meta),
-    )
-    try:
+    ) as pool:
         for result in pool.map(_itm_worker, tasks):
             if result is not None:
                 i, j, loss_db, prx = result
                 loss_grid[i, j] = loss_db
                 prx_grid[i, j] = prx
-    finally:
-        pool.shutdown(wait=False)
+            else:
+                pixels_failed += 1
+    if pixels_attempted > 0 and pixels_failed / pixels_attempted > 0.1:
+        logger.warning(
+            "High ITM pixel failure rate: %d/%d (%.1f%%)",
+            pixels_failed,
+            pixels_attempted,
+            pixels_failed / pixels_attempted * 100.0,
+        )
     out = render_coverage_result(
         prx_grid,
         loss_grid,
@@ -173,6 +184,8 @@ def compute_coverage(
         max_lat,
         min_lon,
         max_lon,
+        pixels_attempted,
+        pixels_failed,
     )
     _cache_put(cache_key, {k: v for k, v in out.items() if k != "from_cache"})
     return out

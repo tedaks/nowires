@@ -14,7 +14,6 @@ src/**/*.png
 .DS_Store
 server.log
 
-.env
 *.npz
 
 # Node / Next.js
@@ -22,9 +21,17 @@ node_modules/
 .next/
 .turbo/
 *.tsbuildinfo
+
+# Environment
+.env
 .env*.local
 
 # Legacy / tools
-scripts/
 tmp-legacy/
+frontend/
 docs/
+.swc/
+
+# Code review
+bugs-m25.md
+bugs-glm51.md

@@ -95,6 +95,8 @@ def render_coverage_result(
     max_lat,
     min_lon,
     max_lon,
+    pixels_attempted=0,
+    pixels_failed=0,
 ):
     import base64
     import io
@@ -116,6 +118,8 @@ def render_coverage_result(
     stats = {
         "pixels_total": int(grid_size * grid_size),
         "pixels_valid": int(valid.sum()),
+        "pixels_attempted": int(pixels_attempted),
+        "pixels_failed": int(pixels_failed),
         "prx_min_dbm": float(np.nanmin(prx_grid)) if valid.any() else None,
         "prx_max_dbm": float(np.nanmax(prx_grid)) if valid.any() else None,
         "pct_above_sensitivity": (

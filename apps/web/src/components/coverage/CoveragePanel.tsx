@@ -215,13 +215,13 @@ export default function CoveragePanel({ txCoords, onResult, onOverlayOpacity }: 
         options={CLIMATE_OPTIONS}
       />
 
-      <button
-        type="button"
+      <Button
+        variant="link"
+        size="xs"
         onClick={() => setShowAdvanced(!showAdvanced)}
-        className="text-xs text-gray-400 hover:text-gray-300 underline"
       >
         {showAdvanced ? "Hide" : "Show"} advanced options
-      </button>
+      </Button>
 
       {showAdvanced && (
         <div className="space-y-2 pl-2 border-l border-gray-700">

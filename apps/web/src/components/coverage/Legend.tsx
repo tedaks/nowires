@@ -17,8 +17,8 @@ export default function Legend({ legend, rxSensitivity }: Props) {
         return (
           <div key={i} className="flex items-center gap-2">
             <span
-              className="inline-block w-4 h-4 rounded-sm flex-shrink-0"
-              style={{ background: `rgba(${r},${g},${b},${a / 255})` }}
+              className="inline-block w-4 h-4 rounded-sm flex-shrink-0 bg-[var(--legend-color)]"
+              style={{ "--legend-color": `rgba(${r},${g},${b},${a / 255})` } as React.CSSProperties}
             />
             <span className="text-gray-300">≥ {entry.threshold_dbm} dBm</span>
             <span className="text-gray-500 ml-auto">{entry.label}</span>

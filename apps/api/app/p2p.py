@@ -1,10 +1,11 @@
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import numpy as np
 
 from .itm_bridge import PROP_MODE_NAMES, itm_p2p_loss
 from .math_kernels import fresnel_profile_analysis
+from .signal_levels import build_pfl
 from .terrain import haversine_m
 from .terrain import profile as get_profile
 
@@ -22,11 +23,6 @@ def fresnel_radius(d1_m: float, d2_m: float, f_mhz: float) -> float:
 def earth_bulge(d_m: float, total_dist_m: float, k_factor: float) -> float:
     a_eff = k_factor * EARTH_RADIUS_M
     return (d_m * (total_dist_m - d_m)) / (2.0 * a_eff)
-
-
-def build_pfl(elevations: List[float], step_m: float) -> List[float]:
-    n = len(elevations) - 1
-    return [float(n), step_m] + elevations
 
 
 def analyze_p2p(
@@ -60,7 +56,13 @@ def analyze_p2p(
 
     distances = [p[0] for p in points]
     elevations = [p[1] for p in points]
-    step_m = distances[1] - distances[0] if len(distances) > 1 else 30.0
+
+    import math
+
+    if any(math.isnan(e) for e in elevations):
+        elevations = [0.0 if math.isnan(e) else e for e in elevations]
+
+    step_m = dist_m / max(len(distances) - 1, 1)
 
     pfl = build_pfl(elevations, step_m)
 

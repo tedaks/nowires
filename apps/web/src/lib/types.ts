@@ -111,6 +111,8 @@ export interface CoverageStats {
   terrain_elev_std_m: number;
   pixels_total: number;
   pixels_valid: number;
+  pixels_attempted: number;
+  pixels_failed: number;
 }
 
 export interface CoverageResponse {

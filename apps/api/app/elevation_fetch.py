@@ -86,7 +86,7 @@ def _apply_tile(
     row_idx = np.clip(np.floor(rows_cols[1]).astype(np.int32), 0, tile_data["shape"][0] - 1)
     elev_values = tile_data["data"][row_idx, col_idx]
     if tile_data["nodata"] is not None:
-        elev_values = np.where(elev_values == tile_data["nodata"], 0.0, elev_values)
+        elev_values = np.where(elev_values == tile_data["nodata"], np.nan, elev_values)
     result[in_tile] = elev_values
 
 
@@ -117,7 +117,7 @@ def _fetch_rasterio_grid(
                 tile_data[(lat_t, lon_t)] = td
     if not tile_data:
         return None
-    result = np.zeros((n, n), dtype=np.float32)
+    result = np.full((n, n), np.nan, dtype=np.float32)
     for (lat_t, lon_t), td in tile_data.items():
         _apply_tile(lat_grid, lon_grid, lat_t, lon_t, td, result)
     return result
@@ -173,28 +173,34 @@ def _get_local_hgt():
 
 def fetch_rasterio_cache(coords: List[Tuple[float, float]]) -> List[float]:
     if not _RASTERIO_AVAILABLE or not _SRTM1_CACHE_ROOT.exists():
-        return [0.0] * len(coords)
+        return [float("nan")] * len(coords)
     elevations = []
     for lat, lon in coords:
         path = _srtm1_tile_path(int(math.floor(lat)), int(math.floor(lon)))
         if not path.exists():
-            elevations.append(0.0)
+            elevations.append(float("nan"))
             continue
         try:
             with rasterio.open(path) as src:
                 row, col = src.index(lon, lat)
                 window = rasterio.windows.Window(col, row, 1, 1)
                 data = src.read(1, window=window)
-                elev = float(data[0, 0]) if data.size > 0 else 0.0
-                elevations.append(elev)
+                if data.size > 0:
+                    v = float(data[0, 0])
+                    if src.nodata is not None and v == src.nodata:
+                        elevations.append(float("nan"))
+                    else:
+                        elevations.append(v)
+                else:
+                    elevations.append(float("nan"))
         except Exception:
-            elevations.append(0.0)
+            elevations.append(float("nan"))
     return elevations
 
 
 def fetch_api_batch(coords: List[Tuple[float, float]]) -> List[float]:
     batch_size = 100
-    out = [0.0] * len(coords)
+    out = [float("nan")] * len(coords)
     api_url = "https://api.opentopodata.org/v1/srtm30m"
     for start in range(0, len(coords), batch_size):
         batch = coords[start : start + batch_size]
@@ -205,9 +211,9 @@ def fetch_api_batch(coords: List[Tuple[float, float]]) -> List[float]:
                 data = json.loads(resp.read())
             for j, r in enumerate(data["results"]):
                 e = r.get("elevation")
-                out[start + j] = float(e) if e is not None else 0.0
-        except Exception:
-            pass
+                out[start + j] = float(e) if e is not None else float("nan")
+        except Exception as e:
+            logger.warning("API batch request failed for %d coords: %s", len(batch), e)
         if start + batch_size < len(coords):
             time.sleep(1.0)
     return out
@@ -219,20 +225,7 @@ def fetch_local_hgt(coords: List[Tuple[float, float]]) -> List[float]:
     for lat, lon in coords:
         try:
             v = local_hgt.get_altitude(lat, lon)
-            out.append(float(v) if v is not None else 0.0)
+            out.append(float(v) if v is not None else float("nan"))
         except Exception:
-            out.append(0.0)
-    return out
-
-
-def _fetch_local(coords: List[Tuple[float, float]]) -> List[float]:
-    """Fetch elevations using python-srtm in-memory .hgt files."""
-    local_hgt = _get_local_hgt()
-    out = []
-    for lat, lon in coords:
-        try:
-            v = local_hgt.get_altitude(lat, lon)
-            out.append(float(v) if v is not None else 0.0)
-        except Exception:
-            out.append(0.0)
+            out.append(float("nan"))
     return out

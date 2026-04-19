@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import P2PPanel from "@/components/p2p/P2PPanel";
 import CoveragePanel from "@/components/coverage/CoveragePanel";
 import SitesPanel from "@/components/coverage/SitesPanel";
+import ProfileChart from "@/components/p2p/ProfileChart";
 import { SiteNameDialog, ClearConfirmDialog } from "@/components/Dialogs";
 import type { MapViewHandle } from "@/components/map/MapView";
 import type { LatLng, P2PResponse, CoverageResponse } from "@/lib/types";
@@ -14,7 +15,6 @@ import type { CoverageSite } from "@/lib/site";
 import { createSite } from "@/lib/site";
 
 const MapView = dynamic(() => import("@/components/map/MapView"), { ssr: false });
-const ProfileChart = dynamic(() => import("@/components/p2p/ProfileChart"), { ssr: false });
 
 type TabId = "p2p" | "coverage";
 
@@ -128,7 +128,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0f0f0f] text-white">
+    <div className="flex h-screen overflow-hidden bg-background text-white">
       {pageError && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded px-3 py-2">{pageError}</div>
       )}
@@ -154,7 +154,7 @@ export default function Home() {
           <div className="absolute bottom-4 left-4 right-4 z-10 bg-black/80 backdrop-blur-sm rounded-lg border border-white/10 p-3 max-h-[45vh]">
             <div className="flex justify-between items-center mb-1">
               <span className="text-xs font-medium">Profile</span>
-               <button className="text-xs text-gray-400 hover:text-white" onClick={() => setShowChart(false)} aria-label="Close">✕</button>
+               <Button variant="ghost" size="icon-xs" onClick={() => setShowChart(false)} aria-label="Close">✕</Button>
             </div>
             <ProfileChart result={p2pResult} />
           </div>

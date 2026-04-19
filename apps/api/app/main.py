@@ -43,11 +43,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
         async with self._lock:
             if now - self._last_cleanup > self._cleanup_interval:
-                self._timestamps = {
-                    c: ts
+                expired = [
+                    c
                     for c, ts in self._timestamps.items()
-                    if any(now - t < self.window_seconds for t in ts)
-                }
+                    if all(now - t >= self.window_seconds for t in ts)
+                ]
+                for c in expired:
+                    del self._timestamps[c]
                 self._last_cleanup = now
 
             if client not in self._timestamps:
@@ -100,8 +102,8 @@ app.add_middleware(
     allow_origins=os.environ.get(
         "DEV_ORIGINS", "http://localhost:3000,http://localhost:3001"
     ).split(","),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 app.add_middleware(RateLimitMiddleware, max_requests=30, window_seconds=60)
 

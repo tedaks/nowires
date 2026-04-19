@@ -95,7 +95,7 @@ def compute_coverage_radius(
         for b in np.arange(0, 360, 1.0)
     ]
 
-    n_workers = max(1, os.cpu_count() or 1)
+    n_workers = min(os.cpu_count() or 1, 4)
     with ProcessPoolExecutor(
         max_workers=n_workers,
         initializer=_init_radius_pool,

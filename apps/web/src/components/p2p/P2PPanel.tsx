@@ -144,13 +144,13 @@ export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
 
       <SelectField label="Climate" value={climate} onChange={setClimate} options={CLIMATE_OPTIONS} />
 
-      <button
-        type="button"
+      <Button
+        variant="link"
+        size="xs"
         onClick={() => setShowLinkBudget(!showLinkBudget)}
-        className="text-xs text-gray-400 hover:text-gray-300 underline"
       >
         {showLinkBudget ? "Hide" : "Show"} link budget
-      </button>
+      </Button>
 
       {showLinkBudget && (
         <div className="space-y-2 pl-2 border-l border-gray-700">
@@ -176,13 +176,13 @@ export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
         </div>
       )}
 
-      <button
-        type="button"
+      <Button
+        variant="link"
+        size="xs"
         onClick={() => setShowITMStats(!showITMStats)}
-        className="text-xs text-gray-400 hover:text-gray-300 underline"
       >
         {showITMStats ? "Hide" : "Show"} ITM statistics
-      </button>
+      </Button>
 
       {showITMStats && (
         <div className="space-y-2 pl-2 border-l border-gray-700">

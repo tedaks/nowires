@@ -43,12 +43,14 @@ cd apps/api && ruff check . && ruff format --check . && pytest -v tests/
 - `apps/web/src/components/coverage/` — Coverage panel + multi-site panel
 
 ## Environment Variables
-See `.env.example` for all variables. Key ones:
+Backend vars are in root `.env` (see `.env.example`). Key ones:
 - `SRTM1_TILES_DIR` — SRTM1 GeoTIFF tiles directory
 - `GLO30_TILES_DIR` — Copernicus GLO-30 tiles directory
 - `LANDCOVER_DIR` — ESA WorldCover land cover tiles directory
-- `DEV_ORIGINS` — Comma-separated Next.js allowed dev origins (for HMR from other devices)
+
+Frontend vars are in `apps/web/.env.local` (see `apps/web/.env.local.example`):
 - `BACKEND_URL` — Backend URL for Next.js proxy (default: http://127.0.0.1:8000)
+- `DEV_ORIGINS` — Comma-separated allowed dev origins (e.g. `http://192.168.2.16:3000`). Next.js requires the `http://` prefix; `next.config.ts` auto-adds it if missing.
 
 ## Key Conventions
 - Python: ruff for lint/format, Numba JIT for hot paths

@@ -34,7 +34,7 @@ export default function SitesPanel({
       : "0";
 
   return (
-    <div className="fixed bottom-4 right-4 w-64 bg-[#1a1a1a] border border-white/10 rounded-lg p-3 shadow-xl z-10 text-sm">
+    <div className="fixed bottom-4 right-4 w-64 bg-card border border-white/10 rounded-lg p-3 shadow-xl z-10 text-sm">
       <div className="flex justify-between items-center mb-2">
         <span className="font-medium">Multi-Site Coverage</span>
          <Button variant="ghost" size="sm" onClick={onClose} className="h-5 w-5 p-0 text-gray-400 hover:text-white" aria-label="Close">
@@ -56,8 +56,8 @@ export default function SitesPanel({
             />
             <div className="flex-1 min-w-0">
               <div
-                className="text-xs font-bold truncate"
-                style={{ color: site.color }}
+               className="text-xs font-bold truncate text-[var(--site-color)]"
+               style={{ "--site-color": site.color } as React.CSSProperties}
               >
                 {site.name}
               </div>

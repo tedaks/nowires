@@ -29,9 +29,9 @@ def fresnel_profile_analysis(
     terrain_bulge = np.empty(n, dtype=np.float64)
     los_h = np.empty(n, dtype=np.float64)
     fresnel_r = np.empty(n, dtype=np.float64)
-    obstructs_los = np.empty(n, dtype=np.bool_)
-    violates_f1 = np.empty(n, dtype=np.bool_)
-    violates_f60 = np.empty(n, dtype=np.bool_)
+    obstructs_los = np.empty(n, dtype=np.uint8)
+    violates_f1 = np.empty(n, dtype=np.uint8)
+    violates_f60 = np.empty(n, dtype=np.uint8)
 
     a_eff = k_factor * 6371000.0
 

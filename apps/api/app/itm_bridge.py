@@ -47,30 +47,37 @@ def itm_p2p_loss(
 ) -> ITMResult:
     terrain = TerrainProfile.from_pfl(profile)
 
+    # API uses 0-indexed climate (0–6), ITM Climate enum is 1-indexed (1–7)
     climate_enum = Climate(int(climate) + 1)
-
     pol_enum = Polarization(1 - int(polarization))
 
-    result = predict_p2p(
-        h_tx__meter=h_tx__meter,
-        h_rx__meter=h_rx__meter,
-        terrain=terrain,
-        climate=climate_enum,
-        N_0=N0,
-        f__mhz=f__mhz,
-        pol=pol_enum,
-        epsilon=epsilon,
-        sigma=sigma,
-        mdvar=int(mdvar),
-        time=time_pct,
-        location=location_pct,
-        situation=situation_pct,
-        return_intermediate=True,
-    )
+    try:
+        result = predict_p2p(
+            h_tx__meter=h_tx__meter,
+            h_rx__meter=h_rx__meter,
+            terrain=terrain,
+            climate=climate_enum,
+            N_0=N0,
+            f__mhz=f__mhz,
+            pol=pol_enum,
+            epsilon=epsilon,
+            sigma=sigma,
+            mdvar=int(mdvar),
+            time=time_pct,
+            location=location_pct,
+            situation=situation_pct,
+            return_intermediate=True,
+        )
+    except (ValueError, RuntimeError, FloatingPointError):
+        return ITMResult(loss_db=999.0, mode=0, warnings=1)
 
     inter = result.intermediate
 
-    mode = int(inter.mode) if inter else 0
+    mode = 0
+    if inter is not None:
+        mode_val = inter.mode
+        if mode_val is not None and not (isinstance(mode_val, float) and mode_val != mode_val):
+            mode = int(mode_val)
 
     warnings_val = int(result.warnings)
 

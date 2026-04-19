@@ -15,6 +15,40 @@ SIGNAL_LEVELS: List[Tuple[float, Tuple[int, int, int, int], str]] = [
 THRESHOLDS = np.array([t for t, _, _ in SIGNAL_LEVELS], dtype=np.float64)
 COLORS = np.array([list(c) for _, c, _ in SIGNAL_LEVELS] + [[90, 20, 20, 0]], dtype=np.uint8)
 
+_MISSING_SENTINEL = float("nan")
+
+
+def _interpolate_nans(values: List[float]) -> List[float]:
+    """Replace NaN values with linear interpolation from nearest numeric neighbours.
+
+    NaN represents missing elevation data. This fills interior gaps by averaging
+    the nearest numeric values on each side. Leading/trailing NaNs are replaced
+    with the nearest available numeric value. If all values are NaN, returns the
+    input unchanged.
+    """
+    if not values:
+        return values
+    filled = list(values)
+    for i in range(len(filled)):
+        if math.isnan(filled[i]):
+            left = None
+            for j in range(i - 1, -1, -1):
+                if not math.isnan(filled[j]):
+                    left = filled[j]
+                    break
+            right = None
+            for j in range(i + 1, len(filled)):
+                if not math.isnan(filled[j]):
+                    right = filled[j]
+                    break
+            if left is not None and right is not None:
+                filled[i] = (left + right) / 2.0
+            elif left is not None:
+                filled[i] = left
+            elif right is not None:
+                filled[i] = right
+    return filled
+
 
 def prx_to_color(prx_dbm: float) -> Tuple[int, int, int, int]:
     if not math.isfinite(prx_dbm):

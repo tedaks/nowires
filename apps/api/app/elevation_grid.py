@@ -14,6 +14,7 @@ Results are cached as .npz files for instant re-fetch.
 
 import hashlib
 import logging
+import math
 from pathlib import Path
 
 import numpy as np
@@ -24,14 +25,28 @@ from app.elevation_fetch import (
     fetch_local_hgt,
     fetch_srtm1_grid,
 )
+from app.signal_levels import _interpolate_nans
 
 logger = logging.getLogger(__name__)
 
 _CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "elev_cache"
+_CACHE_MAX_FILES = 500
 
 
 def _ensure_cache_dir():
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _evict_cache_if_needed():
+    if not _CACHE_DIR.exists():
+        return
+    files = sorted(_CACHE_DIR.glob("*.npz"), key=lambda p: p.stat().st_mtime)
+    while len(files) > _CACHE_MAX_FILES:
+        oldest = files.pop(0)
+        try:
+            oldest.unlink()
+        except Exception:
+            break
 
 
 class ElevationGrid:
@@ -144,6 +159,7 @@ class ElevationGrid:
                 max_lon=max_lon,
                 data=data,
             )
+            _evict_cache_if_needed()
         except Exception:
             pass
 
@@ -163,24 +179,37 @@ def _fetch_grid(
 
     if source == "glo30":
         data = fetch_glo30_grid(min_lat, min_lon, max_lat, max_lon, lats, lons)
-        if data is not None and np.count_nonzero(data) > 0:
-            return data
+        if data is not None and not np.all(np.isnan(data)):
+            return np.nan_to_num(data, nan=0.0).astype(np.float32)
         data = fetch_srtm1_grid(min_lat, min_lon, max_lat, max_lon, lats, lons)
-        if data is not None and np.count_nonzero(data) > 0:
-            return data
+        if data is not None and not np.all(np.isnan(data)):
+            return np.nan_to_num(data, nan=0.0).astype(np.float32)
         elevations = fetch_local_hgt(coords)
-        if any(e != 0.0 for e in elevations):
-            return np.array(elevations, dtype=np.float32).reshape(len(lats), len(lons))
-        return np.array(fetch_api_batch(coords), dtype=np.float32).reshape(len(lats), len(lons))
+        if elevations and any(not math.isnan(e) for e in elevations):
+            return np.array(_interpolate_nans(elevations), dtype=np.float32).reshape(
+                len(lats), len(lons)
+            )
+        api_elevations = fetch_api_batch(coords)
+        return np.array(_interpolate_nans(api_elevations), dtype=np.float32).reshape(
+            len(lats), len(lons)
+        )
 
     elif source == "srtm1":
         data = fetch_srtm1_grid(min_lat, min_lon, max_lat, max_lon, lats, lons)
-        if data is not None and np.count_nonzero(data) > 0:
-            return data
+        if data is not None and not np.all(np.isnan(data)):
+            return np.nan_to_num(data, nan=0.0).astype(np.float32)
         elevations = fetch_local_hgt(coords)
-        if any(e != 0.0 for e in elevations):
-            return np.array(elevations, dtype=np.float32).reshape(len(lats), len(lons))
-        return np.array(fetch_api_batch(coords), dtype=np.float32).reshape(len(lats), len(lons))
+        if elevations and any(not math.isnan(e) for e in elevations):
+            return np.array(_interpolate_nans(elevations), dtype=np.float32).reshape(
+                len(lats), len(lons)
+            )
+        api_elevations = fetch_api_batch(coords)
+        return np.array(_interpolate_nans(api_elevations), dtype=np.float32).reshape(
+            len(lats), len(lons)
+        )
 
     else:
-        return np.array(fetch_api_batch(coords), dtype=np.float32).reshape(len(lats), len(lons))
+        api_elevations = fetch_api_batch(coords)
+        return np.array(_interpolate_nans(api_elevations), dtype=np.float32).reshape(
+            len(lats), len(lons)
+        )
