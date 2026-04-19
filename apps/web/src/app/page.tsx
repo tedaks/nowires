@@ -172,7 +172,14 @@ export default function Home() {
   }
 
   function handleClearAll() {
-    setClearConfirmDialogOpen(true);
+    sites.forEach((s) => mapRef.current?.removeSiteLayer(s.id));
+    mapRef.current?.removeCoverageOverlay();
+    setSites([]);
+    setShowSites(false);
+    setCurrentCoverageResult(null);
+    setCovTxCoords(null);
+    mapRef.current?.setCovMarker(null);
+    setClearConfirmDialogOpen(false);
   }
 
   function confirmClearAll() {

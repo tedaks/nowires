@@ -32,6 +32,7 @@ export default function CoveragePanel({
   const [loadingRadius, setLoadingRadius] = useState(false);
   const [result, setResult] = useState<CoverageResponse | null>(null);
   const [computedRadius, setComputedRadius] = useState<number | null>(null);
+  const [radiusInfo, setRadiusInfo] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(0.75);
   const [genButtonText, setGenButtonText] = useState("Generate Coverage");
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +120,7 @@ export default function CoveragePanel({
         profile_step_m: 250,
       }, controller.signal);
       setComputedRadius(data.avg_radius_km);
-      setError(`Avg: ${data.avg_radius_km} km | Min: ${data.min_radius_km} km | Max: ${data.max_radius_km} km`);
+      setRadiusInfo(`Avg: ${data.avg_radius_km} km | Min: ${data.min_radius_km} km | Max: ${data.max_radius_km} km`);
     } catch (e: unknown) {
       if (e instanceof DOMException && e.name === "AbortError") return;
       setError("Error computing radius: " + (e instanceof Error ? e.message : String(e)));
@@ -276,6 +277,9 @@ export default function CoveragePanel({
         {loadingRadius ? "Computing (1–2 min)..." : "Compute Radius"}
       </Button>
 
+      {radiusInfo && (
+        <div className="text-xs text-cyan-300 bg-cyan-400/10 rounded px-2 py-1">{radiusInfo}</div>
+      )}
       {computedRadius !== null && (
         <div className="text-xs text-gray-300">
           Computed radius: <span className="font-mono text-cyan-300">{computedRadius} km</span>

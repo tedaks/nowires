@@ -189,7 +189,7 @@ async def p2p_endpoint(req: P2PRequest):
 @app.post("/api/coverage")
 async def coverage_endpoint(req: CoverageRequest):
     try:
-        return await asyncio.wait_for(
+        result = await asyncio.wait_for(
             asyncio.get_event_loop().run_in_executor(
                 None,
                 lambda: compute_coverage(
@@ -222,14 +222,18 @@ async def coverage_endpoint(req: CoverageRequest):
             ),
             timeout=COVERAGE_TIMEOUT_S,
         )
+        return result
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Coverage computation timed out")
+    except Exception as e:
+        logger.exception("Coverage computation failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/coverage-radius")
 async def coverage_radius_endpoint(req: CoverageRequest):
     try:
-        return await asyncio.wait_for(
+        result = await asyncio.wait_for(
             asyncio.get_event_loop().run_in_executor(
                 None,
                 lambda: compute_coverage_radius(
@@ -259,10 +263,14 @@ async def coverage_radius_endpoint(req: CoverageRequest):
             ),
             timeout=COVERAGE_TIMEOUT_S,
         )
+        return result
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504, detail="Coverage radius computation timed out"
         )
+    except Exception as e:
+        logger.exception("Coverage radius computation failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
