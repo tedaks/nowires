@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import sys
@@ -6,11 +7,14 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +24,34 @@ if _backend_dir not in sys.path:
 
 from app.p2p import analyze_p2p
 from app.coverage import compute_coverage, compute_coverage_radius
+
+COVERAGE_TIMEOUT_S = 120
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, max_requests: int = 30, window_seconds: int = 60):
+        super().__init__(app)
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._timestamps: dict[str, list[float]] = {}
+
+    async def dispatch(self, request: Request, call_next):
+        client = request.client.host if request.client else "unknown"
+        import time
+
+        now = time.time()
+        if client not in self._timestamps:
+            self._timestamps[client] = []
+        self._timestamps[client] = [
+            t for t in self._timestamps[client] if now - t < self.window_seconds
+        ]
+        if len(self._timestamps[client]) >= self.max_requests:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded. Try again later."},
+            )
+        self._timestamps[client].append(now)
+        return await call_next(request)
 
 
 def _warmup_numba():
@@ -60,6 +92,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware, max_requests=30, window_seconds=60)
 
 from app.config import PROJECT_DIR
 
@@ -155,61 +188,81 @@ async def p2p_endpoint(req: P2PRequest):
 
 @app.post("/api/coverage")
 async def coverage_endpoint(req: CoverageRequest):
-    return compute_coverage(
-        tx_lat=req.tx.lat,
-        tx_lon=req.tx.lon,
-        tx_h_m=req.tx.h_m,
-        rx_h_m=req.rx_h_m,
-        f_mhz=req.freq_mhz,
-        radius_km=req.radius_km,
-        grid_size=req.grid_size,
-        profile_step_m=req.profile_step_m,
-        tx_power_dbm=req.tx_power_dbm,
-        tx_gain_dbi=req.tx_gain_dbi,
-        rx_gain_dbi=req.rx_gain_dbi,
-        cable_loss_db=req.cable_loss_db,
-        rx_sensitivity_dbm=req.rx_sensitivity_dbm,
-        antenna_az_deg=req.antenna_az_deg,
-        antenna_beamwidth_deg=req.antenna_beamwidth_deg,
-        polarization=req.polarization,
-        climate=req.climate,
-        N0=req.N0,
-        epsilon=req.epsilon,
-        sigma=req.sigma,
-        time_pct=req.time_pct,
-        location_pct=req.location_pct,
-        situation_pct=req.situation_pct,
-        terrain_spacing_m=req.terrain_spacing_m,
-        elev_grid_n=req.elev_grid_n,
-    )
+    try:
+        return await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: compute_coverage(
+                    tx_lat=req.tx.lat,
+                    tx_lon=req.tx.lon,
+                    tx_h_m=req.tx.h_m,
+                    rx_h_m=req.rx_h_m,
+                    f_mhz=req.freq_mhz,
+                    radius_km=req.radius_km,
+                    grid_size=req.grid_size,
+                    profile_step_m=req.profile_step_m,
+                    tx_power_dbm=req.tx_power_dbm,
+                    tx_gain_dbi=req.tx_gain_dbi,
+                    rx_gain_dbi=req.rx_gain_dbi,
+                    cable_loss_db=req.cable_loss_db,
+                    rx_sensitivity_dbm=req.rx_sensitivity_dbm,
+                    antenna_az_deg=req.antenna_az_deg,
+                    antenna_beamwidth_deg=req.antenna_beamwidth_deg,
+                    polarization=req.polarization,
+                    climate=req.climate,
+                    N0=req.N0,
+                    epsilon=req.epsilon,
+                    sigma=req.sigma,
+                    time_pct=req.time_pct,
+                    location_pct=req.location_pct,
+                    situation_pct=req.situation_pct,
+                    terrain_spacing_m=req.terrain_spacing_m,
+                    elev_grid_n=req.elev_grid_n,
+                ),
+            ),
+            timeout=COVERAGE_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Coverage computation timed out")
 
 
 @app.post("/api/coverage-radius")
 async def coverage_radius_endpoint(req: CoverageRequest):
-    return compute_coverage_radius(
-        tx_lat=req.tx.lat,
-        tx_lon=req.tx.lon,
-        tx_h_m=req.tx.h_m,
-        rx_h_m=req.rx_h_m,
-        f_mhz=req.freq_mhz,
-        tx_power_dbm=req.tx_power_dbm,
-        tx_gain_dbi=req.tx_gain_dbi,
-        rx_gain_dbi=req.rx_gain_dbi,
-        cable_loss_db=req.cable_loss_db,
-        rx_sensitivity_dbm=req.rx_sensitivity_dbm,
-        antenna_az_deg=req.antenna_az_deg,
-        antenna_beamwidth_deg=req.antenna_beamwidth_deg,
-        polarization=req.polarization,
-        climate=req.climate,
-        N0=req.N0,
-        epsilon=req.epsilon,
-        sigma=req.sigma,
-        time_pct=req.time_pct,
-        location_pct=req.location_pct,
-        situation_pct=req.situation_pct,
-        terrain_spacing_m=req.terrain_spacing_m,
-        elev_grid_n=req.elev_grid_n,
-    )
+    try:
+        return await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: compute_coverage_radius(
+                    tx_lat=req.tx.lat,
+                    tx_lon=req.tx.lon,
+                    tx_h_m=req.tx.h_m,
+                    rx_h_m=req.rx_h_m,
+                    f_mhz=req.freq_mhz,
+                    tx_power_dbm=req.tx_power_dbm,
+                    tx_gain_dbi=req.tx_gain_dbi,
+                    rx_gain_dbi=req.rx_gain_dbi,
+                    cable_loss_db=req.cable_loss_db,
+                    rx_sensitivity_dbm=req.rx_sensitivity_dbm,
+                    antenna_az_deg=req.antenna_az_deg,
+                    antenna_beamwidth_deg=req.antenna_beamwidth_deg,
+                    polarization=req.polarization,
+                    climate=req.climate,
+                    N0=req.N0,
+                    epsilon=req.epsilon,
+                    sigma=req.sigma,
+                    time_pct=req.time_pct,
+                    location_pct=req.location_pct,
+                    situation_pct=req.situation_pct,
+                    terrain_spacing_m=req.terrain_spacing_m,
+                    elev_grid_n=req.elev_grid_n,
+                ),
+            ),
+            timeout=COVERAGE_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504, detail="Coverage radius computation timed out"
+        )
 
 
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")

@@ -4,6 +4,7 @@ import math
 import time
 import urllib.request
 import json
+from collections import OrderedDict
 from typing import List, Tuple
 from pathlib import Path
 
@@ -39,7 +40,8 @@ def _get_hgt():
 
 
 _API_URL = "https://api.opentopodata.org/v1/srtm30m"
-_api_cache: dict = {}
+_API_CACHE_MAX = 4096
+_api_cache: OrderedDict = OrderedDict()
 _API_BATCH = 50
 _API_RETRY = 3
 _API_DELAY = 0.5
@@ -75,6 +77,8 @@ def _batch_api_elevations(coords: List[Tuple[float, float]]) -> List[float]:
                     all_elevations[batch_idx[j]] = val
                     lat, lon = batch[j]
                     _api_cache[(round(lat, 5), round(lon, 5))] = val
+                    if len(_api_cache) > _API_CACHE_MAX:
+                        _api_cache.popitem(last=False)
                 break
             except Exception as e:
                 logger.debug("API batch request failed: %s", e)
@@ -122,6 +126,7 @@ def get_elevation(lat: float, lon: float) -> float:
             logger.debug("SRTM lookup failed for (%s, %s): %s", lat, lon, e)
     key = (round(lat, 5), round(lon, 5))
     if key in _api_cache:
+        _api_cache.move_to_end(key)
         return _api_cache[key]
     result = _batch_api_elevations([(lat, lon)])
     return result[0]
@@ -136,7 +141,7 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         math.sin(dphi / 2) ** 2
         + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     )
-    return 2 * R * math.atan2(math.sqrt(a), 1)
+    return 2 * R * math.asin(math.sqrt(a))
 
 
 def profile(
