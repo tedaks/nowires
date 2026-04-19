@@ -47,8 +47,8 @@ def compute_coverage(
     tx_h_m: float,
     rx_h_m: float,
     f_mhz: float,
-    radius_km: float = 50.0,
-    grid_size: int = 192,
+    radius_km: float,
+    grid_size: int,
     profile_step_m: float = 250.0,
     max_profile_pts: int = 75,
     tx_power_dbm: float = 43.0,
@@ -68,6 +68,7 @@ def compute_coverage(
     situation_pct: float = 50.0,
     terrain_spacing_m: float = 300.0,
     elev_grid_n: int | None = None,
+    elevation_source: str = "glo30",
 ) -> Dict[str, Any]:
     deg_per_m = 1.0 / 111320.0
     pad_deg = 2.0 * terrain_spacing_m * deg_per_m
@@ -100,7 +101,7 @@ def compute_coverage(
         max_lat=max_lat + pad_deg,
         max_lon=max_lon + pad_deg,
         n=elev_grid_n,
-        source="glo30",
+        source=elevation_source,
     )
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
     lats = np.linspace(min_lat, max_lat, grid_size)

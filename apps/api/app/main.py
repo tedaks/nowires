@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -9,8 +8,6 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -22,8 +19,9 @@ _backend_dir = str(Path(__file__).resolve().parent.parent)
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from app.p2p import analyze_p2p
-from app.coverage import compute_coverage, compute_coverage_radius
+from app.coverage import compute_coverage  # noqa: E402
+from app.coverage_radius import compute_coverage_radius  # noqa: E402
+from app.p2p import analyze_p2p  # noqa: E402
 
 COVERAGE_TIMEOUT_S = 120
 
@@ -67,13 +65,12 @@ def _warmup_numba():
     """Pre-compile Numba JIT functions to avoid first-request latency."""
     try:
         import numpy as np
-        from app.math_kernels import fresnel_profile_analysis, apply_coverage_colors
+
+        from app.math_kernels import apply_coverage_colors, fresnel_profile_analysis
 
         distances = np.zeros(3, dtype=np.float64)
         elevations = np.zeros(3, dtype=np.float64)
-        fresnel_profile_analysis(
-            distances, elevations, 10.0, 10.0, 1000.0, 1.0, 4.0 / 3.0
-        )
+        fresnel_profile_analysis(distances, elevations, 10.0, 10.0, 1000.0, 1.0, 4.0 / 3.0)
 
         prx_grid = np.zeros((2, 2), dtype=np.float32)
         thresholds = np.array([-60.0], dtype=np.float64)
@@ -102,12 +99,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RateLimitMiddleware, max_requests=30, window_seconds=60)
-
-from app.config import PROJECT_DIR
-
-FRONTEND_DIR = Path(
-    os.environ.get("FRONTEND_DIR") or str(PROJECT_DIR / "apps" / "web" / "public")
-)
 
 
 class Coordinates(BaseModel):
@@ -145,6 +136,7 @@ class CoverageRequest(BaseModel):
     profile_step_m: float = Field(default=250.0, gt=0)
     terrain_spacing_m: float = Field(default=300.0, gt=0)
     elev_grid_n: Optional[int] = None
+    elevation_source: str = Field(default="glo30")
     polarization: int = Field(default=0, ge=0, le=1)
     climate: int = Field(default=1, ge=0, le=7)
     N0: float = Field(default=301.0, gt=0)
@@ -160,12 +152,6 @@ class CoverageRequest(BaseModel):
     rx_sensitivity_dbm: float = Field(default=-100.0)
     antenna_az_deg: Optional[float] = None
     antenna_beamwidth_deg: float = Field(default=360.0, gt=0, le=360)
-
-
-@app.get("/")
-async def root():
-    with open(FRONTEND_DIR / "index.html") as f:
-        return HTMLResponse(content=f.read())
 
 
 @app.post("/api/p2p")
@@ -227,6 +213,7 @@ async def coverage_endpoint(req: CoverageRequest):
                     situation_pct=req.situation_pct,
                     terrain_spacing_m=req.terrain_spacing_m,
                     elev_grid_n=req.elev_grid_n,
+                    elevation_source=req.elevation_source,
                 ),
             ),
             timeout=COVERAGE_TIMEOUT_S,
@@ -268,21 +255,17 @@ async def coverage_radius_endpoint(req: CoverageRequest):
                     situation_pct=req.situation_pct,
                     terrain_spacing_m=req.terrain_spacing_m,
                     elev_grid_n=req.elev_grid_n,
+                    elevation_source=req.elevation_source,
                 ),
             ),
             timeout=COVERAGE_TIMEOUT_S,
         )
         return result
     except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=504, detail="Coverage radius computation timed out"
-        )
+        raise HTTPException(status_code=504, detail="Coverage radius computation timed out")
     except Exception as e:
         logger.exception("Coverage radius computation failed")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
 if __name__ == "__main__":

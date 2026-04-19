@@ -32,6 +32,7 @@ def compute_coverage_radius(
     situation_pct: float = 50.0,
     terrain_spacing_m: float = 300.0,
     elev_grid_n: int | None = None,
+    elevation_source: str = "glo30",
 ) -> Dict[str, Any]:
     deg_per_m = 1.0 / 111320.0
     pad_deg = 2.0 * terrain_spacing_m * deg_per_m
@@ -50,7 +51,7 @@ def compute_coverage_radius(
         max_lat=tx_lat + half_lat + pad_deg,
         max_lon=tx_lon + half_lon + pad_deg,
         n=elev_grid_n,
-        source="glo30",
+        source=elevation_source,
     )
 
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
