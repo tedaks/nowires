@@ -131,7 +131,7 @@ class CoverageRequest(BaseModel):
     tx: Coordinates
     rx_h_m: float = Field(default=10.0, gt=0)
     freq_mhz: float = Field(default=300.0, gt=0, le=40000)
-    radius_km: float = Field(default=50.0, gt=0, le=500)
+    radius_km: Optional[float] = Field(default=None, gt=0, le=500)
     grid_size: int = Field(default=192, ge=16, le=512)
     profile_step_m: float = Field(default=250.0, gt=0)
     terrain_spacing_m: float = Field(default=300.0, gt=0)

@@ -79,8 +79,11 @@ def compute_coverage(
         f"{tx_lat:.5f},{tx_lon:.5f},{tx_h_m:.1f},{rx_h_m:.1f},{f_mhz:.1f},"
         f"{radius_km},{grid_size},{profile_step_m},{max_profile_pts},{elev_grid_n},"
         f"{tx_power_dbm},{tx_gain_dbi},"
-        f"{rx_gain_dbi},{cable_loss_db},{antenna_az_deg},{antenna_beamwidth_deg},"
-        f"{polarization},{climate},{time_pct},{location_pct},{situation_pct}"
+        f"{rx_gain_dbi},{cable_loss_db},{rx_sensitivity_dbm},"
+        f"{antenna_az_deg},{antenna_beamwidth_deg},"
+        f"{polarization},{climate},{N0},{epsilon},{sigma},"
+        f"{time_pct},{location_pct},{situation_pct},"
+        f"{terrain_spacing_m},{elevation_source}"
     )
     cache_key = hashlib.sha256(cache_key_src.encode()).hexdigest()
     cached = _cache_get(cache_key)

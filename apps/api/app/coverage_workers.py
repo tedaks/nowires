@@ -117,16 +117,23 @@ def _radius_worker(args):
         rx_sensitivity_dbm,
         antenna_az_deg,
         antenna_beamwidth_deg,
+        sweep_step_m,
+        search_max_m,
     ) = args
     gd = _radius_grid_data
     gm = _radius_grid_meta
-    d_min, d_max = 100.0, 100_000.0
-    for _ in range(20):
-        d_mid = (d_min + d_max) / 2.0
-        lat_end, lon_end = _bearing_destination(tx_lat, tx_lon, bearing_deg, d_mid)
-        n_pts = max(3, min(int(round(d_mid / 250.0)) + 1, 75))
+    ant_gain_adj = _antenna_gain_factor(bearing_deg, antenna_az_deg, antenna_beamwidth_deg)
+    profile_step_target = max(100.0, sweep_step_m * 0.5)
+
+    K_MISS = 3
+    consecutive_below = 0
+    last_good = 0.0
+    d = sweep_step_m
+    while d <= search_max_m:
+        lat_end, lon_end = _bearing_destination(tx_lat, tx_lon, bearing_deg, d)
+        n_pts = max(3, min(int(round(d / profile_step_target)) + 1, 500))
         elevs = _sample_line_from_grid(gd, gm, tx_lat, tx_lon, lat_end, lon_end, n_pts)
-        step_m = d_mid / (n_pts - 1)
+        step_m = d / (n_pts - 1)
         pfl = _build_pfl(elevs, step_m)
         try:
             res = itm_p2p_loss(
@@ -143,17 +150,25 @@ def _radius_worker(args):
                 location_pct=location_pct,
                 situation_pct=situation_pct,
             )
+            loss_ok = math.isfinite(res.loss_db)
         except Exception as e:
-            logger.warning("ITM radius worker at bearing %.1f: %s", bearing_deg, e)
-            d_min = d_mid
-            continue
-        if not math.isfinite(res.loss_db):
-            d_min = d_mid
-            continue
-        ant_gain_adj = _antenna_gain_factor(bearing_deg, antenna_az_deg, antenna_beamwidth_deg)
-        prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - res.loss_db
-        if prx >= rx_sensitivity_dbm:
-            d_min = d_mid
+            logger.warning("ITM radius worker at bearing %.1f d=%.0fm: %s", bearing_deg, d, e)
+            loss_ok = False
+
+        if loss_ok:
+            prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - res.loss_db
+            if prx >= rx_sensitivity_dbm:
+                last_good = d
+                consecutive_below = 0
+            else:
+                consecutive_below += 1
         else:
-            d_max = d_mid
-    return (bearing_deg, (d_min + d_max) / 2.0)
+            consecutive_below += 1
+
+        if consecutive_below >= K_MISS:
+            break
+        d += sweep_step_m
+
+    return (bearing_deg, last_good)
+
+

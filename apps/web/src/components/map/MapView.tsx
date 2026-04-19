@@ -51,8 +51,8 @@ function _setupLayers(map: maplibregl.Map) {
   map.addLayer({ id: "horizons-layer", type: "circle", source: "horizons", paint: { "circle-radius": 6, "circle-color": "#f59e0b", "circle-stroke-color": "#0b0b0b", "circle-stroke-width": 2 } });
 }
 
-function _boundsToCoords(bounds: [number, number][]): [[number, number], [number, number], [number, number], [number, number]] {
-  const [[minLon, maxLat], [maxLon, minLat]] = bounds;
+function _boundsToCoords(bounds: [[number, number], [number, number]]): [[number, number], [number, number], [number, number], [number, number]] {
+  const [[minLat, minLon], [maxLat, maxLon]] = bounds;
   return [[minLon, maxLat], [maxLon, maxLat], [maxLon, minLat], [minLon, minLat]];
 }
 

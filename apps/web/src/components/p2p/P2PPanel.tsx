@@ -8,6 +8,29 @@ import { postP2P } from "@/lib/api";
 import { fnum, fint } from "@/lib/radio";
 import type { P2PResponse, LatLng } from "@/lib/types";
 import P2PResult from "./P2PResult";
+import SelectField from "@/components/coverage/SelectField";
+import { CLIMATE_OPTIONS } from "@/components/coverage/coverageForm";
+
+const POLARIZATION_OPTIONS = [
+  { label: "Vertical", value: "0" },
+  { label: "Horizontal", value: "1" },
+];
+
+const K_FACTOR_OPTIONS = [
+  { label: "0.67 (sub-refractive)", value: "0.6667" },
+  { label: "1.0 (true earth)", value: "1.0" },
+  { label: "1.333 (standard)", value: "1.3333" },
+  { label: "1.75 (super-refractive)", value: "1.75" },
+];
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      {children}
+    </div>
+  );
+}
 
 interface Props {
   txCoords: LatLng | null;
@@ -19,16 +42,10 @@ export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<P2PResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showLinkBudget, setShowLinkBudget] = useState(false);
+  const [showITMStats, setShowITMStats] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (error) {
-      const t = setTimeout(() => setError(null), 5000);
-      return () => clearTimeout(t);
-    }
-  }, [error]);
-
-  // Form state
   const [txH, setTxH] = useState("30");
   const [rxH, setRxH] = useState("10");
   const [freq, setFreq] = useState("450");
@@ -43,6 +60,13 @@ export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
   const [rxGain, setRxGain] = useState("2");
   const [cableLoss, setCableLoss] = useState("2");
   const [rxSens, setRxSens] = useState("-100");
+
+  useEffect(() => {
+    if (error) {
+      const t = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [error]);
 
   async function handleAnalyze() {
     if (!txCoords || !rxCoords) {
@@ -89,92 +113,100 @@ export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
       {error && (
         <div className="text-xs text-red-400 bg-red-400/10 rounded px-2 py-1">{error}</div>
       )}
-      <p className="help-text text-xs text-gray-400">
+      <p className="text-xs text-gray-400">
         Click on the map to place TX (green) then RX (red).
       </p>
 
-      <div className="coord-row">
+      <div>
         <Label className="text-xs text-gray-400">TX Location</Label>
         <div className="text-xs font-mono">
-          {txCoords
-            ? `${txCoords.lat.toFixed(5)}, ${txCoords.lng.toFixed(5)}`
-            : "Not selected"}
-        </div>
-      </div>
-      <div className="coord-row">
-        <Label className="text-xs text-gray-400">RX Location</Label>
-        <div className="text-xs font-mono">
-          {rxCoords
-            ? `${rxCoords.lat.toFixed(5)}, ${rxCoords.lng.toFixed(5)}`
-            : "Not selected"}
+          {txCoords ? `${txCoords.lat.toFixed(5)}, ${txCoords.lng.toFixed(5)}` : "Not selected"}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-xs">TX height (m)</Label>
+        <Field label="TX height (m)">
           <Input value={txH} onChange={(e) => setTxH(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">RX height (m)</Label>
+        </Field>
+        <Field label="RX height (m)">
           <Input value={rxH} onChange={(e) => setRxH(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Freq (MHz)</Label>
-          <Input value={freq} onChange={(e) => setFreq(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Polarization</Label>
-          <Input value={polarization} onChange={(e) => setPolarization(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Climate</Label>
-          <Input value={climate} onChange={(e) => setClimate(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">k-factor</Label>
-          <Input value={kFactor} onChange={(e) => setKFactor(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Time %</Label>
-          <Input value={timePct} onChange={(e) => setTimePct(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Location %</Label>
-          <Input value={locPct} onChange={(e) => setLocPct(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Situation %</Label>
-          <Input value={sitPct} onChange={(e) => setSitPct(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">TX Power (dBm)</Label>
-          <Input value={txPower} onChange={(e) => setTxPower(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">TX Gain (dBi)</Label>
-          <Input value={txGain} onChange={(e) => setTxGain(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">RX Gain (dBi)</Label>
-          <Input value={rxGain} onChange={(e) => setRxGain(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">Cable loss (dB)</Label>
-          <Input value={cableLoss} onChange={(e) => setCableLoss(e.target.value)} className="h-7 text-xs" />
-        </div>
-        <div>
-          <Label className="text-xs">RX sensitivity (dBm)</Label>
-          <Input value={rxSens} onChange={(e) => setRxSens(e.target.value)} className="h-7 text-xs" />
+        </Field>
+      </div>
+
+      <div>
+        <Label className="text-xs text-gray-400">RX Location</Label>
+        <div className="text-xs font-mono">
+          {rxCoords ? `${rxCoords.lat.toFixed(5)}, ${rxCoords.lng.toFixed(5)}` : "Not selected"}
         </div>
       </div>
 
-      <Button
-        onClick={handleAnalyze}
-        disabled={loading}
-        className="w-full"
-        size="sm"
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Freq (MHz)">
+          <Input value={freq} onChange={(e) => setFreq(e.target.value)} className="h-7 text-xs" />
+        </Field>
+        <SelectField label="Polarization" value={polarization} onChange={setPolarization} options={POLARIZATION_OPTIONS} />
+      </div>
+
+      <SelectField label="Climate" value={climate} onChange={setClimate} options={CLIMATE_OPTIONS} />
+
+      <button
+        type="button"
+        onClick={() => setShowLinkBudget(!showLinkBudget)}
+        className="text-xs text-gray-400 hover:text-gray-300 underline"
       >
+        {showLinkBudget ? "Hide" : "Show"} link budget
+      </button>
+
+      {showLinkBudget && (
+        <div className="space-y-2 pl-2 border-l border-gray-700">
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="TX Power (dBm)">
+              <Input value={txPower} onChange={(e) => setTxPower(e.target.value)} className="h-7 text-xs" />
+            </Field>
+            <Field label="Cable Loss (dB)">
+              <Input value={cableLoss} onChange={(e) => setCableLoss(e.target.value)} className="h-7 text-xs" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="TX Gain (dBi)">
+              <Input value={txGain} onChange={(e) => setTxGain(e.target.value)} className="h-7 text-xs" />
+            </Field>
+            <Field label="RX Gain (dBi)">
+              <Input value={rxGain} onChange={(e) => setRxGain(e.target.value)} className="h-7 text-xs" />
+            </Field>
+          </div>
+          <Field label="RX Sensitivity (dBm)">
+            <Input value={rxSens} onChange={(e) => setRxSens(e.target.value)} className="h-7 text-xs" />
+          </Field>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowITMStats(!showITMStats)}
+        className="text-xs text-gray-400 hover:text-gray-300 underline"
+      >
+        {showITMStats ? "Hide" : "Show"} ITM statistics
+      </button>
+
+      {showITMStats && (
+        <div className="space-y-2 pl-2 border-l border-gray-700">
+          <div className="grid grid-cols-3 gap-2">
+            <Field label="Time %">
+              <Input value={timePct} onChange={(e) => setTimePct(e.target.value)} className="h-7 text-xs" />
+            </Field>
+            <Field label="Location %">
+              <Input value={locPct} onChange={(e) => setLocPct(e.target.value)} className="h-7 text-xs" />
+            </Field>
+            <Field label="Situation %">
+              <Input value={sitPct} onChange={(e) => setSitPct(e.target.value)} className="h-7 text-xs" />
+            </Field>
+          </div>
+          <SelectField label="K-factor (earth curvature)" value={kFactor} onChange={setKFactor} options={K_FACTOR_OPTIONS} />
+        </div>
+      )}
+
+      <Button onClick={handleAnalyze} disabled={loading} className="w-full" size="sm">
         {loading ? "Analyzing..." : "Analyze Path"}
       </Button>
 

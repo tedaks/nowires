@@ -20,6 +20,11 @@ export interface CoverageFormState {
   antPattern: "omni" | "dir";
   antAz: string;
   antBw: string;
+  n0: string;
+  epsilon: string;
+  sigma: string;
+  profileStep: string;
+  elevSource: string;
 }
 
 export const DEFAULTS: CoverageFormState = {
@@ -41,6 +46,11 @@ export const DEFAULTS: CoverageFormState = {
   antPattern: "omni",
   antAz: "0",
   antBw: "90",
+  n0: "301",
+  epsilon: "15",
+  sigma: "0.005",
+  profileStep: "250",
+  elevSource: "glo30",
 };
 
 export function buildRequest(
@@ -71,6 +81,11 @@ export function buildRequest(
     rx_sensitivity_dbm: fnum(form.rxSens, -100),
     antenna_az_deg: form.antPattern === "dir" ? fnum(form.antAz, 0) : null,
     antenna_beamwidth_deg: form.antPattern === "dir" ? fnum(form.antBw, 90) : 360,
+    N0: fnum(form.n0, 301),
+    epsilon: fnum(form.epsilon, 15),
+    sigma: fnum(form.sigma, 0.005),
+    profile_step_m: fnum(form.profileStep, 250),
+    elevation_source: form.elevSource || "glo30",
   };
 }
 
@@ -80,8 +95,6 @@ export const FIELDS: { key: StringFieldKey; label: string }[] = [
   { key: "txH", label: "TX height (m)" },
   { key: "rxH", label: "RX height (m)" },
   { key: "freq", label: "Freq (MHz)" },
-  { key: "gridSize", label: "Grid size" },
-  { key: "terrainSpacing", label: "Terrain spacing (m)" },
   { key: "polarization", label: "Polarization" },
   { key: "climate", label: "Climate" },
   { key: "timePct", label: "Time %" },
@@ -92,4 +105,14 @@ export const FIELDS: { key: StringFieldKey; label: string }[] = [
   { key: "rxGain", label: "RX Gain (dBi)" },
   { key: "cableLoss", label: "Cable loss (dB)" },
   { key: "rxSens", label: "RX sensitivity (dBm)" },
+];
+
+export const CLIMATE_OPTIONS = [
+  { label: "Equatorial", value: "0" },
+  { label: "Continental Subtropical", value: "1" },
+  { label: "Maritime Subtropical", value: "2" },
+  { label: "Desert", value: "3" },
+  { label: "Continental Temperate", value: "4" },
+  { label: "Maritime Temperate (Land)", value: "5" },
+  { label: "Maritime Temperate (Sea)", value: "6" },
 ];

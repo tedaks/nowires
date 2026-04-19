@@ -22,7 +22,6 @@ from app.elevation_fetch import (
     fetch_api_batch,
     fetch_glo30_grid,
     fetch_local_hgt,
-    fetch_rasterio_cache,
     fetch_srtm1_grid,
 )
 

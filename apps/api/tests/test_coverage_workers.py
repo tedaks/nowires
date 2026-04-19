@@ -215,11 +215,13 @@ def test_radius_worker_returns_tuple():
                 -100.0,
                 None,
                 360.0,
+                500.0,
+                100_000.0,
             )
         )
 
     assert bearing == 45.0
-    assert 100.0 <= radius_m <= 100_000.0
+    assert radius_m == 0.0
 
 
 def test_radius_worker_low_loss_returns_large_radius():
@@ -257,6 +259,8 @@ def test_radius_worker_low_loss_returns_large_radius():
                 -100.0,
                 None,
                 360.0,
+                500.0,
+                100_000.0,
             )
         )
 

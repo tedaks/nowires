@@ -36,14 +36,15 @@ def compute_coverage_radius(
 ) -> Dict[str, Any]:
     deg_per_m = 1.0 / 111320.0
     pad_deg = 2.0 * terrain_spacing_m * deg_per_m
-    padded_bbox_m = 2.0 * 100.0 * 1000.0 + 4.0 * terrain_spacing_m
+    search_max_m = 100.0 * 1000.0
+    padded_bbox_m = 2.0 * search_max_m + 4.0 * terrain_spacing_m
     if elev_grid_n is None:
-        elev_grid_n = max(64, min(320, int(padded_bbox_m / terrain_spacing_m) + 1))
+        elev_grid_n = max(64, min(1024, int(padded_bbox_m / terrain_spacing_m) + 1))
 
     lat_per_m = 1.0 / 111320.0
     lon_per_m = 1.0 / (111320.0 * max(math.cos(math.radians(tx_lat)), 0.01))
-    half_lat = 100.0 * 1000.0 * lat_per_m
-    half_lon = 100.0 * 1000.0 * lon_per_m
+    half_lat = search_max_m * lat_per_m
+    half_lon = search_max_m * lon_per_m
 
     elev = ElevationGrid.fetch(
         min_lat=tx_lat - half_lat - pad_deg,
@@ -65,6 +66,7 @@ def compute_coverage_radius(
         "n_lon": elev.n_lon,
     }
 
+    sweep_step_m = max(500.0, terrain_spacing_m * 2.0)
     worker_args = [
         (
             float(b),
@@ -86,6 +88,8 @@ def compute_coverage_radius(
             rx_sensitivity_dbm,
             antenna_az_deg,
             antenna_beamwidth_deg,
+            sweep_step_m,
+            search_max_m,
         )
         for b in np.arange(0, 360, 1.0)
     ]

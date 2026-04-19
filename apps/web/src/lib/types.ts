@@ -86,6 +86,10 @@ export interface CoverageRequest {
   rx_sensitivity_dbm: number;
   antenna_az_deg: number | null;
   antenna_beamwidth_deg: number;
+  N0?: number;
+  epsilon?: number;
+  sigma?: number;
+  elevation_source?: string;
 }
 
 export interface LegendEntry {
