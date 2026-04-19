@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -6,9 +7,12 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 _backend_dir = str(Path(__file__).resolve().parent.parent)
 if _backend_dir not in sys.path:
@@ -26,73 +30,94 @@ def _warmup_numba():
 
         distances = np.zeros(3, dtype=np.float64)
         elevations = np.zeros(3, dtype=np.float64)
-        fresnel_profile_analysis(distances, elevations, 10.0, 10.0, 1000.0, 1.0, 4.0 / 3.0)
+        fresnel_profile_analysis(
+            distances, elevations, 10.0, 10.0, 1000.0, 1.0, 4.0 / 3.0
+        )
 
         prx_grid = np.zeros((2, 2), dtype=np.float32)
         thresholds = np.array([-60.0], dtype=np.float64)
         colors = np.array([[0, 110, 40, 210]], dtype=np.uint8)
         rgba_out = np.zeros((2, 2, 4), dtype=np.uint8)
         apply_coverage_colors(prx_grid, thresholds, colors, rgba_out)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Numba warmup failed: %s", e)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.config import _ensure_dirs
+
+    _ensure_dirs()
     _warmup_numba()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", str(PROJECT_DIR / "frontend")))
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+from app.config import PROJECT_DIR
+
+FRONTEND_DIR = Path(
+    os.environ.get("FRONTEND_DIR", str(PROJECT_DIR / "apps" / "web" / "public"))
+)
+
+
+class Coordinates(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    h_m: float = Field(default=30.0, gt=0)
 
 
 class P2PRequest(BaseModel):
-    tx: dict
-    rx: dict
-    freq_mhz: float = 300.0
-    polarization: int = 0
-    climate: int = 1
-    N0: float = 301.0
-    epsilon: float = 15.0
-    sigma: float = 0.005
-    time_pct: float = 50.0
-    location_pct: float = 50.0
-    situation_pct: float = 50.0
-    k_factor: float = 4.0 / 3.0
-    tx_power_dbm: float = 43.0
-    tx_gain_dbi: float = 8.0
-    rx_gain_dbi: float = 2.0
-    cable_loss_db: float = 2.0
-    rx_sensitivity_dbm: float = -100.0
+    tx: Coordinates
+    rx: Coordinates
+    freq_mhz: float = Field(default=300.0, gt=0, le=40000)
+    polarization: int = Field(default=0, ge=0, le=1)
+    climate: int = Field(default=1, ge=0, le=7)
+    N0: float = Field(default=301.0, gt=0)
+    epsilon: float = Field(default=15.0, gt=0)
+    sigma: float = Field(default=0.005, gt=0)
+    time_pct: float = Field(default=50.0, gt=0, le=100)
+    location_pct: float = Field(default=50.0, gt=0, le=100)
+    situation_pct: float = Field(default=50.0, gt=0, le=100)
+    k_factor: float = Field(default=4.0 / 3.0, gt=0)
+    tx_power_dbm: float = Field(default=43.0)
+    tx_gain_dbi: float = Field(default=8.0)
+    rx_gain_dbi: float = Field(default=2.0)
+    cable_loss_db: float = Field(default=2.0, ge=0)
+    rx_sensitivity_dbm: float = Field(default=-100.0)
 
 
 class CoverageRequest(BaseModel):
-    tx: dict
-    rx_h_m: float = 10.0
-    freq_mhz: float = 300.0
-    radius_km: float = 50.0
-    grid_size: int = 192
-    profile_step_m: float = 250.0
-    terrain_spacing_m: float = 300.0
+    tx: Coordinates
+    rx_h_m: float = Field(default=10.0, gt=0)
+    freq_mhz: float = Field(default=300.0, gt=0, le=40000)
+    radius_km: float = Field(default=50.0, gt=0, le=500)
+    grid_size: int = Field(default=192, ge=16, le=512)
+    profile_step_m: float = Field(default=250.0, gt=0)
+    terrain_spacing_m: float = Field(default=300.0, gt=0)
     elev_grid_n: Optional[int] = None
-    polarization: int = 0
-    climate: int = 1
-    N0: float = 301.0
-    epsilon: float = 15.0
-    sigma: float = 0.005
-    time_pct: float = 50.0
-    location_pct: float = 50.0
-    situation_pct: float = 50.0
-    tx_power_dbm: float = 43.0
-    tx_gain_dbi: float = 8.0
-    rx_gain_dbi: float = 2.0
-    cable_loss_db: float = 2.0
-    rx_sensitivity_dbm: float = -100.0
+    polarization: int = Field(default=0, ge=0, le=1)
+    climate: int = Field(default=1, ge=0, le=7)
+    N0: float = Field(default=301.0, gt=0)
+    epsilon: float = Field(default=15.0, gt=0)
+    sigma: float = Field(default=0.005, gt=0)
+    time_pct: float = Field(default=50.0, gt=0, le=100)
+    location_pct: float = Field(default=50.0, gt=0, le=100)
+    situation_pct: float = Field(default=50.0, gt=0, le=100)
+    tx_power_dbm: float = Field(default=43.0)
+    tx_gain_dbi: float = Field(default=8.0)
+    rx_gain_dbi: float = Field(default=2.0)
+    cable_loss_db: float = Field(default=2.0, ge=0)
+    rx_sensitivity_dbm: float = Field(default=-100.0)
     antenna_az_deg: Optional[float] = None
-    antenna_beamwidth_deg: float = 360.0
+    antenna_beamwidth_deg: float = Field(default=360.0, gt=0, le=360)
 
 
 @app.get("/")
@@ -104,12 +129,12 @@ async def root():
 @app.post("/api/p2p")
 async def p2p_endpoint(req: P2PRequest):
     return analyze_p2p(
-        tx_lat=req.tx["lat"],
-        tx_lon=req.tx["lon"],
-        tx_h_m=req.tx.get("h_m", 30.0),
-        rx_lat=req.rx["lat"],
-        rx_lon=req.rx["lon"],
-        rx_h_m=req.rx.get("h_m", 10.0),
+        tx_lat=req.tx.lat,
+        tx_lon=req.tx.lon,
+        tx_h_m=req.tx.h_m,
+        rx_lat=req.rx.lat,
+        rx_lon=req.rx.lon,
+        rx_h_m=req.rx.h_m,
         f_mhz=req.freq_mhz,
         polarization=req.polarization,
         climate=req.climate,
@@ -131,9 +156,9 @@ async def p2p_endpoint(req: P2PRequest):
 @app.post("/api/coverage")
 async def coverage_endpoint(req: CoverageRequest):
     return compute_coverage(
-        tx_lat=req.tx["lat"],
-        tx_lon=req.tx["lon"],
-        tx_h_m=req.tx.get("h_m", 30.0),
+        tx_lat=req.tx.lat,
+        tx_lon=req.tx.lon,
+        tx_h_m=req.tx.h_m,
         rx_h_m=req.rx_h_m,
         f_mhz=req.freq_mhz,
         radius_km=req.radius_km,
@@ -154,15 +179,17 @@ async def coverage_endpoint(req: CoverageRequest):
         time_pct=req.time_pct,
         location_pct=req.location_pct,
         situation_pct=req.situation_pct,
+        terrain_spacing_m=req.terrain_spacing_m,
+        elev_grid_n=req.elev_grid_n,
     )
 
 
 @app.post("/api/coverage-radius")
 async def coverage_radius_endpoint(req: CoverageRequest):
     return compute_coverage_radius(
-        tx_lat=req.tx["lat"],
-        tx_lon=req.tx["lon"],
-        tx_h_m=req.tx.get("h_m", 30.0),
+        tx_lat=req.tx.lat,
+        tx_lon=req.tx.lon,
+        tx_h_m=req.tx.h_m,
         rx_h_m=req.rx_h_m,
         f_mhz=req.freq_mhz,
         tx_power_dbm=req.tx_power_dbm,
@@ -180,6 +207,8 @@ async def coverage_radius_endpoint(req: CoverageRequest):
         time_pct=req.time_pct,
         location_pct=req.location_pct,
         situation_pct=req.situation_pct,
+        terrain_spacing_m=req.terrain_spacing_m,
+        elev_grid_n=req.elev_grid_n,
     )
 
 

@@ -1,3 +1,4 @@
+import logging
 import os
 import math
 import time
@@ -6,19 +7,36 @@ import json
 from typing import List, Tuple
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 _data_dir = Path(__file__).resolve().parent.parent.parent / "data" / "srtm1"
-_data_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_data_dir():
+    _data_dir.mkdir(parents=True, exist_ok=True)
+
 
 _hgt = None
-try:
-    os.environ["SRTM1_DIR"] = str(_data_dir)
-    from srtm import Srtm1HeightMapCollection
+_hgt_init_done = False
 
-    _hgt = Srtm1HeightMapCollection()
-    if len(_hgt.height_maps) == 0:
-        _hgt = None
-except Exception:
-    _hgt = None
+
+def _get_hgt():
+    global _hgt, _hgt_init_done
+    if not _hgt_init_done:
+        _hgt_init_done = True
+        _ensure_data_dir()
+        try:
+            os.environ["SRTM1_DIR"] = str(_data_dir)
+            from srtm import Srtm1HeightMapCollection
+
+            _hgt = Srtm1HeightMapCollection()
+            if len(_hgt.height_maps) == 0:
+                _hgt = None
+        except Exception as e:
+            logger.warning("Failed to initialize SRTM: %s", e)
+            _hgt = None
+    return _hgt
+
 
 _API_URL = "https://api.opentopodata.org/v1/srtm30m"
 _api_cache: dict = {}
@@ -58,7 +76,8 @@ def _batch_api_elevations(coords: List[Tuple[float, float]]) -> List[float]:
                     lat, lon = batch[j]
                     _api_cache[(round(lat, 5), round(lon, 5))] = val
                 break
-            except Exception:
+            except Exception as e:
+                logger.debug("API batch request failed: %s", e)
                 if attempt < _API_RETRY - 1:
                     time.sleep(_API_DELAY * (attempt + 1))
                 else:
@@ -83,7 +102,6 @@ def _batch_api_elevations(coords: List[Tuple[float, float]]) -> List[float]:
                     right = filled[j]
                     break
             if left is not None and right is not None:
-                dl = j - i if (j := i - 1) else 1
                 filled[i] = (left + right) / 2.0
             elif left is not None:
                 filled[i] = left
@@ -94,13 +112,14 @@ def _batch_api_elevations(coords: List[Tuple[float, float]]) -> List[float]:
 
 
 def get_elevation(lat: float, lon: float) -> float:
-    if _hgt is not None:
+    hgt = _get_hgt()
+    if hgt is not None:
         try:
-            elev = _hgt.get_altitude(lat, lon)
+            elev = hgt.get_altitude(lat, lon)
             if elev is not None:
                 return float(elev)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("SRTM lookup failed for (%s, %s): %s", lat, lon, e)
     key = (round(lat, 5), round(lon, 5))
     if key in _api_cache:
         return _api_cache[key]
@@ -136,13 +155,15 @@ def profile(
         lon = lon1 + t * (lon2 - lon1)
         coords.append((lat, lon))
 
-    if _hgt is not None:
+    hgt = _get_hgt()
+    if hgt is not None:
         elevations = []
         for lat, lon in coords:
             try:
-                elev = _hgt.get_altitude(lat, lon)
+                elev = hgt.get_altitude(lat, lon)
                 elevations.append(float(elev) if elev is not None else 0.0)
-            except Exception:
+            except Exception as e:
+                logger.debug("SRTM elevation failed at (%s, %s): %s", lat, lon, e)
                 elevations.append(0.0)
     else:
         elevations = _batch_api_elevations(coords)

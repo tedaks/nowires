@@ -46,9 +46,18 @@ def get_credentials():
         info = n.authenticators("urs.earthdata.nasa.gov")
         if info:
             return info[0], info[2]
-    except Exception:
+    except (FileNotFoundError, netrc.NetrcParseError):
         pass
     return None, None
+
+
+def _safe_extract(zf, dest):
+    dest = dest.resolve()
+    for member in zf.infolist():
+        member_path = (dest / member.filename).resolve()
+        if not str(member_path).startswith(str(dest)):
+            raise ValueError(f"Path traversal in zip: {member.filename}")
+    zf.extractall(dest)
 
 
 def download_tile(tile: str) -> bool:
@@ -72,12 +81,13 @@ def download_tile(tile: str) -> bool:
         password_mgr.add_password(None, "e4ftl01.cr.usgs.gov", user, password)
         handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
         opener = urllib.request.build_opener(handler)
-        opener.open(url)
 
-        urllib.request.urlretrieve(url, zip_path)
+        with opener.open(url) as resp:
+            with open(zip_path, "wb") as f:
+                f.write(resp.read())
 
         with zipfile.ZipFile(zip_path, "r") as zf:
-            zf.extractall(SRTM1_DIR)
+            _safe_extract(zf, SRTM1_DIR)
         zip_path.unlink()
         print(f"  {tile}: downloaded and extracted")
         return True
@@ -88,35 +98,36 @@ def download_tile(tile: str) -> bool:
         return False
 
 
-tiles = []
-for lat in range(int(MIN_LAT), int(MAX_LAT) + 1):
-    for lon in range(int(MIN_LON), int(MAX_LON) + 1):
-        tiles.append(tile_name(lat, lon))
+if __name__ == "__main__":
+    tiles = []
+    for lat in range(int(MIN_LAT), int(MAX_LAT) + 1):
+        for lon in range(int(MIN_LON), int(MAX_LON) + 1):
+            tiles.append(tile_name(lat, lon))
 
-unique_tiles = sorted(set(tiles))
+    unique_tiles = sorted(set(tiles))
 
-print(f"Philippines SRTM1 tiles ({len(unique_tiles)} tiles):")
-user, _ = get_credentials()
-if not user:
-    print("WARNING: No Earthdata credentials found.")
-    print(
-        "The app uses the OpenTopoData API by default, which works without local tiles."
-    )
-    print(
-        "To download tiles, set EARTHDATA_USER and EARTHDATA_PASS environment variables"
-    )
-    print(
-        "with your NASA Earthdata account (register at https://urs.earthdata.nasa.gov)"
-    )
-    print()
+    print(f"Philippines SRTM1 tiles ({len(unique_tiles)} tiles):")
+    user, _ = get_credentials()
+    if not user:
+        print("WARNING: No Earthdata credentials found.")
+        print(
+            "The app uses the OpenTopoData API by default, which works without local tiles."
+        )
+        print(
+            "To download tiles, set EARTHDATA_USER and EARTHDATA_PASS environment variables"
+        )
+        print(
+            "with your NASA Earthdata account (register at https://urs.earthdata.nasa.gov)"
+        )
+        print()
 
-downloaded = 0
-for t in unique_tiles:
-    if download_tile(t):
-        downloaded += 1
+    downloaded = 0
+    for t in unique_tiles:
+        if download_tile(t):
+            downloaded += 1
 
-print(f"\nDone. {downloaded}/{len(unique_tiles)} tiles downloaded to {SRTM1_DIR}")
-if downloaded == 0:
-    print(
-        "No tiles downloaded. The app will use the OpenTopoData SRTM 30m API instead."
-    )
+    print(f"\nDone. {downloaded}/{len(unique_tiles)} tiles downloaded to {SRTM1_DIR}")
+    if downloaded == 0:
+        print(
+            "No tiles downloaded. The app will use the OpenTopoData SRTM 30m API instead."
+        )

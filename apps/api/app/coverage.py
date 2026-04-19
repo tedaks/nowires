@@ -8,11 +8,13 @@ pattern to produce received power in dBm, which is then colored by signal
 level the way commercial radio planning tools do.
 """
 
+import logging
 import math
 import os
 import io
 import base64
 import hashlib
+from collections import OrderedDict
 from concurrent.futures import ProcessPoolExecutor
 from typing import Dict, Any, List, Tuple, Optional
 
@@ -23,8 +25,27 @@ from .elevation_grid import ElevationGrid
 from .itm_bridge import itm_p2p_loss
 from .math_kernels import apply_coverage_colors
 
+logger = logging.getLogger(__name__)
 
-_png_cache: Dict[str, Dict[str, Any]] = {}
+_PNG_CACHE_MAX = 32
+_png_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+
+
+def _cache_get(key: str) -> Dict[str, Any] | None:
+    if key in _png_cache:
+        _png_cache.move_to_end(key)
+        return _png_cache[key]
+    return None
+
+
+def _cache_put(key: str, value: Dict[str, Any]) -> None:
+    if key in _png_cache:
+        _png_cache.move_to_end(key)
+    else:
+        _png_cache[key] = value
+    if len(_png_cache) > _PNG_CACHE_MAX:
+        _png_cache.popitem(last=False)
+
 
 # Shared elevation grid for coverage worker pool
 _cov_grid_data: Optional[np.ndarray] = None
@@ -199,7 +220,8 @@ def _itm_worker(args):
             location_pct=location_pct,
             situation_pct=situation_pct,
         )
-    except Exception:
+    except Exception as e:
+        logger.warning("ITM worker failed for pixel (%d,%d): %s", i, j, e)
         return None
     if not math.isfinite(res.loss_db) or res.loss_db > 400.0:
         return None
@@ -309,7 +331,8 @@ def _radius_worker(args):
                 location_pct=location_pct,
                 situation_pct=situation_pct,
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("ITM radius worker at bearing %.1f: %s", bearing_deg, e)
             d_min = d_mid
             continue
         if not math.isfinite(res.loss_db):
@@ -462,7 +485,9 @@ def compute_coverage(
     pad_deg = 2.0 * terrain_spacing_m * deg_per_m
     padded_bbox_m = 2.0 * radius_km * 1000.0 + 4.0 * terrain_spacing_m
     if elev_grid_n is None:
-        elev_grid_n = max(64, min(grid_size + 64, int(padded_bbox_m / terrain_spacing_m) + 1))
+        elev_grid_n = max(
+            64, min(grid_size + 64, int(padded_bbox_m / terrain_spacing_m) + 1)
+        )
 
     cache_key_src = (
         f"{tx_lat:.5f},{tx_lon:.5f},{tx_h_m:.1f},{rx_h_m:.1f},{f_mhz:.1f},"
@@ -471,9 +496,10 @@ def compute_coverage(
         f"{rx_gain_dbi},{cable_loss_db},{antenna_az_deg},{antenna_beamwidth_deg},"
         f"{polarization},{climate},{time_pct},{location_pct},{situation_pct}"
     )
-    cache_key = hashlib.md5(cache_key_src.encode()).hexdigest()
-    if cache_key in _png_cache:
-        return {**_png_cache[cache_key], "from_cache": True}
+    cache_key = hashlib.sha256(cache_key_src.encode()).hexdigest()
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return {**cached, "from_cache": True}
 
     radius_m = radius_km * 1000.0
     lat_per_m = 1.0 / 111320.0
@@ -625,5 +651,5 @@ def compute_coverage(
         "stats": stats,
         "from_cache": False,
     }
-    _png_cache[cache_key] = {k: v for k, v in out.items() if k != "from_cache"}
+    _cache_put(cache_key, {k: v for k, v in out.items() if k != "from_cache"})
     return out

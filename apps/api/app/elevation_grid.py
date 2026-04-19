@@ -12,6 +12,7 @@ Results are cached as .npz files for instant re-fetch.
 """
 
 import hashlib
+import logging
 import math
 import os
 import time
@@ -24,15 +25,21 @@ import numpy as np
 
 from app.config import SRTM1_TILES_DIR as _SRTM1_CACHE_ROOT
 
+logger = logging.getLogger(__name__)
+
 try:
     import rasterio
+
     _RASTERIO_AVAILABLE = True
 except ImportError:
     _RASTERIO_AVAILABLE = False
 
 
 _CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "elev_cache"
-_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_cache_dir():
+    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _try_local_srtm():
@@ -44,12 +51,21 @@ def _try_local_srtm():
         hgt = Srtm1HeightMapCollection()
         if len(hgt.height_maps) > 0:
             return hgt
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to initialize local SRTM: %s", e)
     return None
 
 
-_LOCAL_HGT = _try_local_srtm()
+_LOCAL_HGT = None
+_local_init_done = False
+
+
+def _get_local_hgt():
+    global _LOCAL_HGT, _local_init_done
+    if not _local_init_done:
+        _local_init_done = True
+        _LOCAL_HGT = _try_local_srtm()
+    return _LOCAL_HGT
 
 
 def _fetch_rasterio_grid(
@@ -95,7 +111,8 @@ def _fetch_rasterio_grid(
                         "nodata": src.nodata,
                         "shape": src.shape,
                     }
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to read tile %s: %s", tile_path, e)
                 continue
 
     if not tile_data:
@@ -214,10 +231,11 @@ def _fetch_api_batch(coords: List[Tuple[float, float]]) -> List[float]:
 
 def _fetch_local(coords: List[Tuple[float, float]]) -> List[float]:
     """Fetch elevations using python-srtm in-memory .hgt files."""
+    local_hgt = _get_local_hgt()
     out = []
     for lat, lon in coords:
         try:
-            v = _LOCAL_HGT.get_altitude(lat, lon)
+            v = local_hgt.get_altitude(lat, lon)
             out.append(float(v) if v is not None else 0.0)
         except Exception:
             out.append(0.0)
@@ -308,7 +326,7 @@ class ElevationGrid:
         n: int,
     ) -> Path:
         s = f"{min_lat:.5f},{min_lon:.5f},{max_lat:.5f},{max_lon:.5f},{n}"
-        h = hashlib.md5(s.encode()).hexdigest()
+        h = hashlib.sha256(s.encode()).hexdigest()
         return _CACHE_DIR / f"{h}.npz"
 
     @classmethod
@@ -320,6 +338,7 @@ class ElevationGrid:
         max_lon: float,
         n: int = 80,
     ) -> "ElevationGrid":
+        _ensure_cache_dir()
         path = cls._cache_key(min_lat, min_lon, max_lat, max_lon, n)
         if path.exists():
             try:
@@ -331,8 +350,8 @@ class ElevationGrid:
                     max_lon=float(z["max_lon"]),
                     data=z["data"].astype(np.float32),
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to load cache %s: %s", path, e)
 
         lats = np.linspace(min_lat, max_lat, n)
         lons = np.linspace(min_lon, max_lon, n)
@@ -355,7 +374,8 @@ class ElevationGrid:
         if data is None:
             # 2. Try python-srtm in-memory
             coords = [(float(la), float(lo)) for la in lats for lo in lons]
-            if _LOCAL_HGT is not None:
+            local_hgt = _get_local_hgt()
+            if local_hgt is not None:
                 elevations = _fetch_local(coords)
             elif _RASTERIO_AVAILABLE and _SRTM1_CACHE_ROOT.exists():
                 elevations = _fetch_elevation_cache(coords)

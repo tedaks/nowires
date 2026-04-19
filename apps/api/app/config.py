@@ -1,22 +1,35 @@
 from pathlib import Path
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import os
 
-# Load .env from project root
-_project_root = Path(__file__).resolve().parent.parent.parent.parent
-load_dotenv(_project_root / ".env")
+_dotenv_path = find_dotenv(usecwd=True)
+if _dotenv_path:
+    load_dotenv(_dotenv_path, override=False)
+    _project_root = Path(_dotenv_path).resolve().parent
+else:
+    _project_root = Path(__file__).resolve().parent.parent.parent.parent
+    load_dotenv(_project_root / ".env")
 
 BASE_DIR = _project_root
+PROJECT_DIR = _project_root
 DATA_DIR = BASE_DIR / "data"
 
 SRTM1_DIR = DATA_DIR / "srtm1"
-SRTM1_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_dirs():
+    SRTM1_DIR.mkdir(parents=True, exist_ok=True)
+
 
 # Custom GeoTIFF tile directory for elevation data.
 # Set SRTM1_TILES_DIR in .env to override the default path.
 # Default: ~/.cache/elevation/SRTM1/cache
 _SRTM1_TILES_DIR_ENV = os.environ.get("SRTM1_TILES_DIR", "").strip()
-SRTM1_TILES_DIR = Path(_SRTM1_TILES_DIR_ENV) if _SRTM1_TILES_DIR_ENV else Path.home() / ".cache" / "elevation" / "SRTM1" / "cache"
+SRTM1_TILES_DIR = (
+    Path(_SRTM1_TILES_DIR_ENV)
+    if _SRTM1_TILES_DIR_ENV
+    else Path.home() / ".cache" / "elevation" / "SRTM1" / "cache"
+)
 
 PH_BBOX = {
     "min_lat": 4.0,

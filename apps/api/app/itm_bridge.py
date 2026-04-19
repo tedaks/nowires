@@ -68,9 +68,9 @@ def itm_p2p_loss(
         epsilon=epsilon,
         sigma=sigma,
         mdvar=int(mdvar),
-        time=time_pct,
-        location=location_pct,
-        situation=situation_pct,
+        time=time_pct / 100.0,
+        location=location_pct / 100.0,
+        situation=situation_pct / 100.0,
         return_intermediate=True,
     )
 
