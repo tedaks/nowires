@@ -97,7 +97,7 @@ app.add_middleware(RateLimitMiddleware, max_requests=30, window_seconds=60)
 from app.config import PROJECT_DIR
 
 FRONTEND_DIR = Path(
-    os.environ.get("FRONTEND_DIR", str(PROJECT_DIR / "apps" / "web" / "public"))
+    os.environ.get("FRONTEND_DIR") or str(PROJECT_DIR / "apps" / "web" / "public")
 )
 
 
