@@ -22,14 +22,49 @@ export interface MapViewHandle {
   resize(): void;
 }
 
-interface Props {
-  onMapClick: (lngLat: LatLng) => void;
+interface Props { onMapClick: (lngLat: LatLng) => void; }
+
+const MAP_STYLE = {
+  version: 8 as const,
+  sources: {
+    hillshade: { type: "raster" as const, tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, attribution: "© Esri World Hillshade" },
+    osm: { type: "raster" as const, tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" },
+  },
+  layers: [
+    { id: "hillshade", type: "raster" as const, source: "hillshade" },
+    { id: "osm", type: "raster" as const, source: "osm", paint: { "raster-opacity": 0.55 } },
+  ],
+};
+
+const _txMarker = () => new maplibregl.Marker({ color: "#22c55e" });
+const _rxMarker = () => new maplibregl.Marker({ color: "#ef4444" });
+
+function _geojsonSrc(data: GeoJSON.FeatureCollection) { return { type: "geojson" as const, data }; }
+function _imageSrc(url: string, coords: [[number, number], [number, number], [number, number], [number, number]]) {
+  return { type: "image" as const, url, coordinates: coords };
 }
 
-const MapView = forwardRef<MapViewHandle, Props>(function MapView(
-  { onMapClick },
-  ref
-) {
+function _setupLayers(map: maplibregl.Map) {
+  map.addSource("path-line", _geojsonSrc({ type: "FeatureCollection", features: [] }));
+  map.addLayer({ id: "path-line-layer", type: "line", source: "path-line", paint: { "line-color": "#22d3ee", "line-width": 3 } });
+  map.addSource("horizons", _geojsonSrc({ type: "FeatureCollection", features: [] }));
+  map.addLayer({ id: "horizons-layer", type: "circle", source: "horizons", paint: { "circle-radius": 6, "circle-color": "#f59e0b", "circle-stroke-color": "#0b0b0b", "circle-stroke-width": 2 } });
+}
+
+function _boundsToCoords(bounds: [number, number][]): [[number, number], [number, number], [number, number], [number, number]] {
+  const [[minLon, maxLat], [maxLon, minLat]] = bounds;
+  return [[minLon, maxLat], [maxLon, maxLat], [maxLon, minLat], [minLon, minLat]];
+}
+
+function _updateGeoJSON(map: maplibregl.Map, source: string, features: GeoJSON.Feature[]) {
+  (map.getSource(source) as maplibregl.GeoJSONSource)?.setData({ type: "FeatureCollection", features });
+}
+
+function _removeOverlay(map: maplibregl.Map, layer: string, source: string) {
+  try { if (map.getLayer(layer)) map.removeLayer(layer); if (map.getSource(source)) map.removeSource(source); } catch {}
+}
+
+const MapView = forwardRef<MapViewHandle, Props>(function MapView({ onMapClick }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const onMapClickRef = useRef(onMapClick);
@@ -41,260 +76,96 @@ const MapView = forwardRef<MapViewHandle, Props>(function MapView(
 
   useImperativeHandle(ref, () => ({
     drawPath(tx, rx) {
-      const map = mapRef.current;
-      if (!map) return;
-      (map.getSource("path-line") as maplibregl.GeoJSONSource)?.setData({
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: [[tx.lng, tx.lat], [rx.lng, rx.lat]],
-            },
-            properties: {},
-          },
-        ],
-      });
+      const m = mapRef.current;
+      if (!m) return;
+      _updateGeoJSON(m, "path-line", [{ type: "Feature", geometry: { type: "LineString", coordinates: [[tx.lng, tx.lat], [rx.lng, rx.lat]] }, properties: {} }]);
     },
 
     drawHorizons(horizons, tx, rx, totalDistM) {
-      const map = mapRef.current;
-      if (!map) return;
+      const m = mapRef.current;
+      if (!m) return;
       const features = horizons.map((h) => {
         const t = h.d_m / totalDistM;
-        const lng = tx.lng + t * (rx.lng - tx.lng);
-        const lat = tx.lat + t * (rx.lat - tx.lat);
-        return {
-          type: "Feature" as const,
-          geometry: { type: "Point" as const, coordinates: [lng, lat] },
-          properties: { role: h.role },
-        };
+        return { type: "Feature" as const, geometry: { type: "Point" as const, coordinates: [tx.lng + t * (rx.lng - tx.lng), tx.lat + t * (rx.lat - tx.lat)] }, properties: { role: h.role } };
       });
-      (map.getSource("horizons") as maplibregl.GeoJSONSource)?.setData({
-        type: "FeatureCollection",
-        features,
-      });
+      _updateGeoJSON(m, "horizons", features);
     },
 
     addCoverageOverlay(result) {
-      const map = mapRef.current;
-      if (!map) return;
-      const { png_base64, bounds } = result;
-      const [minLat, minLon] = bounds[0];
-      const [maxLat, maxLon] = bounds[1];
-      const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [
-        [minLon, maxLat],
-        [maxLon, maxLat],
-        [maxLon, minLat],
-        [minLon, minLat],
-      ];
-      try {
-        if (map.getLayer("coverage-overlay-layer")) {
-          map.removeLayer("coverage-overlay-layer");
-        }
-        if (map.getSource("coverage-overlay")) {
-          map.removeSource("coverage-overlay");
-        }
-      } catch {
-        // may not exist yet
-      }
-      map.addSource("coverage-overlay", {
-        type: "image",
-        url: "data:image/png;base64," + png_base64,
-        coordinates,
-      });
-      map.addLayer(
-        {
-          id: "coverage-overlay-layer",
-          type: "raster",
-          source: "coverage-overlay",
-          paint: { "raster-opacity": 0.75 },
-        },
-        "path-line-layer"
-      );
+      const m = mapRef.current;
+      if (!m) return;
+      _removeOverlay(m, "coverage-overlay-layer", "coverage-overlay");
+      m.addSource("coverage-overlay", _imageSrc("data:image/png;base64," + result.png_base64, _boundsToCoords(result.bounds)));
+      m.addLayer({ id: "coverage-overlay-layer", type: "raster", source: "coverage-overlay", paint: { "raster-opacity": 0.75 } }, "path-line-layer");
     },
 
-    removeCoverageOverlay() {
-      const map = mapRef.current;
-      if (!map) return;
-      try {
-        if (map.getLayer("coverage-overlay-layer")) {
-          map.removeLayer("coverage-overlay-layer");
-        }
-        if (map.getSource("coverage-overlay")) {
-          map.removeSource("coverage-overlay");
-        }
-      } catch {
-        // Layer/source may not exist
-      }
-    },
+    removeCoverageOverlay() { const m = mapRef.current; if (m) _removeOverlay(m, "coverage-overlay-layer", "coverage-overlay"); },
 
     setOverlayOpacity(opacity) {
-      const map = mapRef.current;
-      if (!map) return;
-      if (map.getLayer("coverage-overlay-layer")) {
-        map.setPaintProperty("coverage-overlay-layer", "raster-opacity", opacity);
-      }
+      const m = mapRef.current;
+      if (m?.getLayer("coverage-overlay-layer")) m.setPaintProperty("coverage-overlay-layer", "raster-opacity", opacity);
     },
 
     addSiteLayer(site) {
-      const map = mapRef.current;
-      if (!map) return;
-      const layerId = `site-coverage-${site.id}`;
-      const sourceId = `site-source-${site.id}`;
+      const m = mapRef.current;
+      if (!m) return;
       const { png_base64, bounds } = site.coverage_data;
-      const [minLat, minLon] = bounds[0];
-      const [maxLat, maxLon] = bounds[1];
-      map.addSource(sourceId, {
-        type: "image",
-        url: `data:image/png;base64,${png_base64}`,
-        coordinates: [
-          [minLon, maxLat],
-          [maxLon, maxLat],
-          [maxLon, minLat],
-          [minLon, minLat],
-        ],
-      });
-      map.addLayer(
-        { id: layerId, type: "raster", source: sourceId, paint: { "raster-opacity": site.opacity } },
-        "path-line-layer"
-      );
+      const srcId = `site-source-${site.id}`;
+      const layerId = `site-coverage-${site.id}`;
+      m.addSource(srcId, _imageSrc(`data:image/png;base64,${png_base64}`, _boundsToCoords(bounds)));
+      m.addLayer({ id: layerId, type: "raster", source: srcId, paint: { "raster-opacity": site.opacity } }, "path-line-layer");
     },
 
     removeSiteLayer(siteId) {
-      const map = mapRef.current;
-      if (!map) return;
+      const m = mapRef.current;
+      if (!m) return;
       const layerId = `site-coverage-${siteId}`;
-      const sourceId = `site-source-${siteId}`;
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
+      const srcId = `site-source-${siteId}`;
+      if (m.getLayer(layerId)) m.removeLayer(layerId);
+      if (m.getSource(srcId)) m.removeSource(srcId);
     },
 
     setSiteVisibility(siteId, visible) {
-      const map = mapRef.current;
-      if (!map) return;
+      const m = mapRef.current;
       const layerId = `site-coverage-${siteId}`;
-      if (map.getLayer(layerId))
-        map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+      if (m?.getLayer(layerId)) m.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
     },
 
     setSiteOpacity(siteId, opacity) {
-      const map = mapRef.current;
-      if (!map) return;
+      const m = mapRef.current;
       const layerId = `site-coverage-${siteId}`;
-      if (map.getLayer(layerId))
-        map.setPaintProperty(layerId, "raster-opacity", opacity);
+      if (m?.getLayer(layerId)) m.setPaintProperty(layerId, "raster-opacity", opacity);
     },
 
     setTxMarker(lngLat) {
       txMarkerRef.current?.remove();
       txMarkerRef.current = null;
-      if (lngLat && mapRef.current) {
-        txMarkerRef.current = new maplibregl.Marker({ color: "#22c55e" })
-          .setLngLat([lngLat.lng, lngLat.lat])
-          .addTo(mapRef.current);
-      }
+      if (lngLat && mapRef.current) txMarkerRef.current = _txMarker().setLngLat([lngLat.lng, lngLat.lat]).addTo(mapRef.current);
     },
 
     setRxMarker(lngLat) {
       rxMarkerRef.current?.remove();
       rxMarkerRef.current = null;
-      if (lngLat && mapRef.current) {
-        rxMarkerRef.current = new maplibregl.Marker({ color: "#ef4444" })
-          .setLngLat([lngLat.lng, lngLat.lat])
-          .addTo(mapRef.current);
-      }
+      if (lngLat && mapRef.current) rxMarkerRef.current = _rxMarker().setLngLat([lngLat.lng, lngLat.lat]).addTo(mapRef.current);
     },
 
     setCovMarker(lngLat) {
       covMarkerRef.current?.remove();
       covMarkerRef.current = null;
-      if (lngLat && mapRef.current) {
-        covMarkerRef.current = new maplibregl.Marker({ color: "#22c55e" })
-          .setLngLat([lngLat.lng, lngLat.lat])
-          .addTo(mapRef.current);
-      }
+      if (lngLat && mapRef.current) covMarkerRef.current = _txMarker().setLngLat([lngLat.lng, lngLat.lat]).addTo(mapRef.current);
     },
 
-    resize() {
-      mapRef.current?.resize();
-    },
+    resize() { mapRef.current?.resize(); },
   }));
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          hillshade: {
-            type: "raster",
-            tiles: [
-              "https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
-            ],
-            tileSize: 256,
-            attribution: "© Esri World Hillshade",
-          },
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors",
-          },
-        },
-        layers: [
-          { id: "hillshade", type: "raster", source: "hillshade" },
-          { id: "osm", type: "raster", source: "osm", paint: { "raster-opacity": 0.55 } },
-        ],
-      },
-      center: [121.0, 12.0],
-      zoom: 6,
-    });
-
-    map.on("error", (e) => {
-      console.error("MapLibre error:", e.error);
-    });
-
-    map.on("load", () => {
-      map.addSource("path-line", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-      map.addLayer({
-        id: "path-line-layer",
-        type: "line",
-        source: "path-line",
-        paint: { "line-color": "#22d3ee", "line-width": 3 },
-      });
-      map.addSource("horizons", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-      map.addLayer({
-        id: "horizons-layer",
-        type: "circle",
-        source: "horizons",
-        paint: {
-          "circle-radius": 6,
-          "circle-color": "#f59e0b",
-          "circle-stroke-color": "#0b0b0b",
-          "circle-stroke-width": 2,
-        },
-      });
-    });
-
-    map.on("click", (e) => {
-      const { lng, lat } = e.lngLat;
-      onMapClickRef.current({ lng, lat });
-    });
-
+    const map = new maplibregl.Map({ container: containerRef.current, style: MAP_STYLE, center: [121.0, 12.0], zoom: 6 });
+    map.on("error", (e) => console.error("MapLibre error:", e.error));
+    map.on("load", () => _setupLayers(map));
+    map.on("click", (e) => onMapClickRef.current(e.lngLat));
     mapRef.current = map;
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
+    return () => { map.remove(); mapRef.current = null; };
   }, []);
 
   return <div ref={containerRef} className="w-full h-full min-h-[400px]" />;

@@ -1,11 +1,12 @@
 import math
+from typing import Any, Dict, List
+
 import numpy as np
-from typing import List, Dict, Any
 
-from .terrain import profile as get_profile, haversine_m
-from .itm_bridge import itm_p2p_loss, PROP_MODE_NAMES
+from .itm_bridge import PROP_MODE_NAMES, itm_p2p_loss
 from .math_kernels import fresnel_profile_analysis
-
+from .terrain import haversine_m
+from .terrain import profile as get_profile
 
 C = 299792458.0
 EARTH_RADIUS_M = 6371000.0
@@ -129,8 +130,7 @@ def analyze_p2p(
     if len(profile_data) > max_chart_points:
         step = (len(profile_data) - 1) / (max_chart_points - 1)
         downsampled = [
-            profile_data[min(int(i * step), len(profile_data) - 1)]
-            for i in range(max_chart_points)
+            profile_data[min(int(i * step), len(profile_data) - 1)] for i in range(max_chart_points)
         ]
         profile_data = downsampled
 
@@ -161,9 +161,7 @@ def analyze_p2p(
     if 0 < result.d_hzn_tx_m < dist_m:
         horizons.append({"role": "tx_horizon", "d_m": round(result.d_hzn_tx_m, 1)})
     if 0 < result.d_hzn_rx_m < dist_m:
-        horizons.append(
-            {"role": "rx_horizon", "d_m": round(dist_m - result.d_hzn_rx_m, 1)}
-        )
+        horizons.append({"role": "rx_horizon", "d_m": round(dist_m - result.d_hzn_rx_m, 1)})
 
     return {
         "distance_m": round(dist_m, 1),

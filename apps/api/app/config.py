@@ -1,6 +1,7 @@
-from pathlib import Path
-from dotenv import load_dotenv
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _DOTENV = _PROJECT_ROOT / ".env"
@@ -27,6 +28,9 @@ SRTM1_TILES_DIR = (
     if _SRTM1_TILES_DIR_ENV
     else Path.home() / ".cache" / "elevation" / "SRTM1" / "cache"
 )
+
+_GLO30_TILES_DIR_ENV = os.environ.get("GLO30_TILES_DIR", "").strip()
+GLO30_TILES_DIR = Path(_GLO30_TILES_DIR_ENV) if _GLO30_TILES_DIR_ENV else DATA_DIR / "glo30"
 
 PH_BBOX = {
     "min_lat": 4.0,

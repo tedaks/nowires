@@ -1,6 +1,6 @@
-import math
 from dataclasses import dataclass
-from itm import predict_p2p, Climate, Polarization, TerrainProfile
+
+from itm import Climate, Polarization, TerrainProfile, predict_p2p
 
 PROP_MODE_NAMES = {
     0: "Line-of-Sight",

@@ -1,12 +1,12 @@
+import json
 import logging
-import os
 import math
+import os
 import time
 import urllib.request
-import json
 from collections import OrderedDict
-from typing import List, Tuple
 from pathlib import Path
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -137,10 +137,7 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
-    a = (
-        math.sin(dphi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    )
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     return 2 * R * math.asin(math.sqrt(a))
 
 

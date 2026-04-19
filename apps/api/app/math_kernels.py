@@ -1,6 +1,7 @@
 import math
-import numpy as np
+
 import numba
+import numpy as np
 from numba import prange
 
 
@@ -41,9 +42,7 @@ def fresnel_profile_analysis(
         tb = elevations[i] + bulge
         los = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
         d2 = dist_m - d
-        fr = (
-            math.sqrt(wavelength_m * d * d2 / (d + d2)) if d > 0.0 and d2 > 0.0 else 0.0
-        )
+        fr = math.sqrt(wavelength_m * d * d2 / (d + d2)) if d > 0.0 and d2 > 0.0 else 0.0
 
         terrain_bulge[i] = tb
         los_h[i] = los

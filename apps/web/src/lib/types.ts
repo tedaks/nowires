@@ -70,7 +70,7 @@ export interface CoverageRequest {
   tx: { lat: number; lon: number; h_m: number };
   rx_h_m: number;
   freq_mhz: number;
-  radius_km: number;
+  radius_km: number | null;
   grid_size: number;
   profile_step_m?: number;
   terrain_spacing_m: number;
