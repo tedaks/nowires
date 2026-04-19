@@ -293,7 +293,7 @@ const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     };
   }, []);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return <div ref={containerRef} className="w-full h-full min-h-[400px]" />;
 });
 
 export default MapView;
