@@ -20,3 +20,8 @@ node_modules/
 .turbo/
 *.tsbuildinfo
 .env*.local
+
+# Legacy / tools
+scripts/
+tmp-legacy/
+docs/
