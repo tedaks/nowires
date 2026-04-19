@@ -253,6 +253,10 @@ const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       zoom: 6,
     });
 
+    map.on("error", (e) => {
+      console.error("MapLibre error:", e.error);
+    });
+
     map.on("load", () => {
       map.addSource("path-line", {
         type: "geojson",
