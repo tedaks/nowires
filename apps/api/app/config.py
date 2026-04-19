@@ -1,17 +1,14 @@
 from pathlib import Path
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 import os
 
-_dotenv_path = find_dotenv(usecwd=True)
-if _dotenv_path:
-    load_dotenv(_dotenv_path, override=False)
-    _project_root = Path(_dotenv_path).resolve().parent
-else:
-    _project_root = Path(__file__).resolve().parent.parent.parent.parent
-    load_dotenv(_project_root / ".env")
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_DOTENV = _PROJECT_ROOT / ".env"
+if _DOTENV.exists():
+    load_dotenv(_DOTENV, override=False)
 
-BASE_DIR = _project_root
-PROJECT_DIR = _project_root
+BASE_DIR = _PROJECT_ROOT
+PROJECT_DIR = _PROJECT_ROOT
 DATA_DIR = BASE_DIR / "data"
 
 SRTM1_DIR = DATA_DIR / "srtm1"
