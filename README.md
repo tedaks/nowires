@@ -17,7 +17,7 @@ NoWires computes point-to-point path loss, terrain profiles with Fresnel zone an
 ### 1. Install Python Dependencies
 
 ```bash
-pip install -r backend/requirements.txt
+pip install -r apps/api/requirements.txt
 ```
 
 ### 2. Configure Elevation Data
@@ -33,31 +33,41 @@ Tiles must be organized as `N##/N##E###.tif` (the standard elevation download fo
 ### 3. Run the Server
 
 ```bash
-cd backend
+cd apps/api
 uvicorn app.main:app --reload --port 8000
 ```
 
-Open http://localhost:8000 in your browser.
+### 4. Run the Frontend (Next.js)
+
+```bash
+npm install
+npm run dev:web
+```
+
+Open http://localhost:3000 in your browser.
 
 ## Architecture
 
 ```
 nowires/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI server with Numba warmup
-│   │   ├── p2p.py               # Point-to-point analysis
-│   │   ├── coverage.py          # Coverage grid + radius computation
-│   │   ├── itm_bridge.py        # Python wrapper for itm package
-│   │   ├── elevation_grid.py    # Vectorized SRTM1 GeoTIFF reader + bilinear sampling
-│   │   ├── math_kernels.py      # Numba JIT kernels (Fresnel, color mapping)
-│   │   ├── config.py            # Paths, defaults, .env loader
-│   │   └── terrain.py           # Elevation profile extraction
-│   └── requirements.txt
-├── frontend/
-│   ├── index.html               # Single-page app
-│   ├── app.js                   # MapLibre + Plotly logic
-│   └── styles.css
+├── apps/
+│   ├── api/                     # FastAPI backend
+│   │   ├── app/
+│   │   │   ├── main.py          # FastAPI server with Numba warmup
+│   │   │   ├── p2p.py           # Point-to-point analysis
+│   │   │   ├── coverage.py      # Coverage grid + radius computation
+│   │   │   ├── itm_bridge.py    # Python wrapper for itm package
+│   │   │   ├── elevation_grid.py
+│   │   │   ├── math_kernels.py  # Numba JIT kernels
+│   │   │   ├── config.py
+│   │   │   └── terrain.py
+│   │   └── requirements.txt
+│   └── web/                     # Next.js 15 App Router frontend
+│       └── src/
+│           ├── app/             # Routes and layout
+│           ├── components/      # Map, P2P, Coverage, UI
+│           ├── lib/             # API client, types, utils
+│           └── hooks/
 ├── data/                        # Runtime cache (gitignored)
 └── docs/
     └── superpowers/             # Design specs and implementation plans

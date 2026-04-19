@@ -13,3 +13,10 @@ server.log
 
 .env
 *.npz
+
+# Node / Next.js
+node_modules/
+.next/
+.turbo/
+*.tsbuildinfo
+.env*.local

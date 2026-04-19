@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 
 # Load .env from project root
-_project_root = Path(__file__).resolve().parent.parent.parent
+_project_root = Path(__file__).resolve().parent.parent.parent.parent
 load_dotenv(_project_root / ".env")
 
 BASE_DIR = _project_root

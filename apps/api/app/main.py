@@ -45,8 +45,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
-FRONTEND_DIR = PROJECT_DIR / "frontend"
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", str(PROJECT_DIR / "frontend")))
 
 
 class P2PRequest(BaseModel):
