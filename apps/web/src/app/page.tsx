@@ -22,6 +22,7 @@ import type { CoverageSite } from "@/lib/site";
 import { createSite } from "@/lib/site";
 
 const MapView = dynamic(() => import("@/components/map/MapView"), { ssr: false });
+const ProfileChart = dynamic(() => import("@/components/p2p/ProfileChart"), { ssr: false });
 
 type TabId = "p2p" | "coverage";
 
@@ -41,6 +42,10 @@ export default function Home() {
   const [currentCoverageResult, setCurrentCoverageResult] = useState<CoverageResponse | null>(null);
   const [sites, setSites] = useState<CoverageSite[]>([]);
   const [showSites, setShowSites] = useState(false);
+
+  // P2P profile chart overlay
+  const [p2pResult, setP2pResult] = useState<P2PResponse | null>(null);
+  const [showChart, setShowChart] = useState(false);
 
   // Dialog state
   const [siteNameDialogOpen, setSiteNameDialogOpen] = useState(false);
@@ -97,6 +102,7 @@ export default function Home() {
       mapRef.current?.setCovMarker(null);
       setCovTxCoords(null);
       setCurrentCoverageResult(null);
+      setShowChart(false);
     } else {
       mapRef.current?.setTxMarker(null);
       mapRef.current?.setRxMarker(null);
@@ -104,6 +110,8 @@ export default function Home() {
       rxRef.current = null;
       setTxCoords(null);
       setRxCoords(null);
+      setP2pResult(null);
+      setShowChart(false);
     }
   }
 
@@ -111,8 +119,10 @@ export default function Home() {
     const tx = txRef.current;
     const rx = rxRef.current;
     if (!tx || !rx) return;
+    setP2pResult(result);
     mapRef.current?.drawPath(tx, rx);
     mapRef.current?.drawHorizons(result.horizons || [], tx, rx, result.distance_m);
+    setShowChart(true);
   }
 
   function handleCoverageResult(result: CoverageResponse) {
@@ -226,6 +236,20 @@ export default function Home() {
         <div className="absolute inset-0">
           <MapView ref={mapRef} onMapClick={handleMapClick} />
         </div>
+        {showChart && p2pResult && (
+          <div className="absolute bottom-4 left-4 right-4 z-10 bg-black/80 backdrop-blur-sm rounded-lg border border-white/10 p-3 max-h-[45vh]">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-xs font-medium">Profile</span>
+              <button
+                className="text-xs text-gray-400 hover:text-white"
+                onClick={() => setShowChart(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <ProfileChart result={p2pResult} />
+          </div>
+        )}
       </div>
 
       {showSites && sites.length > 0 && (

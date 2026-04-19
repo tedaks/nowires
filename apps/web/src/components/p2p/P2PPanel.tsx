@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +8,6 @@ import { postP2P } from "@/lib/api";
 import { fnum, fint } from "@/lib/radio";
 import type { P2PResponse, LatLng } from "@/lib/types";
 import P2PResult from "./P2PResult";
-
-const ProfileChart = dynamic(() => import("./ProfileChart"), { ssr: false });
 
 interface Props {
   txCoords: LatLng | null;
@@ -21,7 +18,6 @@ interface Props {
 export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<P2PResponse | null>(null);
-  const [showChart, setShowChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -79,7 +75,6 @@ export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
         return;
       }
       setResult(res);
-      setShowChart(true);
       onResult(res);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -184,21 +179,6 @@ export default function P2PPanel({ txCoords, rxCoords, onResult }: Props) {
       </Button>
 
       {result && <P2PResult result={result} />}
-
-      {result && showChart && (
-        <div className="mt-2">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-medium">Profile</span>
-            <button
-              className="text-xs text-gray-400 hover:text-white"
-              onClick={() => setShowChart(false)}
-            >
-              ✕
-            </button>
-          </div>
-          <ProfileChart result={result} />
-        </div>
-      )}
     </div>
   );
 }
