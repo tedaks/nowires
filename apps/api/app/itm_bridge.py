@@ -11,12 +11,6 @@ PROP_MODE_NAMES = {
     5: "Mixed Path",
 }
 
-_PYMODE_TO_CPPMODE = {
-    1: 0,
-    2: 2,
-    3: 3,
-}
-
 
 @dataclass
 class ITMResult:
@@ -76,7 +70,7 @@ def itm_p2p_loss(
 
     inter = result.intermediate
 
-    mode = _PYMODE_TO_CPPMODE.get(int(inter.mode), int(inter.mode)) if inter else 0
+    mode = int(inter.mode) if inter else 0
 
     warnings_val = int(result.warnings)
 

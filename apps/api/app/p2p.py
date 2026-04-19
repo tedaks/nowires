@@ -127,9 +127,11 @@ def analyze_p2p(
 
     max_chart_points = 400
     if len(profile_data) > max_chart_points:
-        step = len(profile_data) / max_chart_points
-        downsampled = [profile_data[int(i * step)] for i in range(max_chart_points)]
-        downsampled.append(profile_data[-1])
+        step = (len(profile_data) - 1) / (max_chart_points - 1)
+        downsampled = [
+            profile_data[min(int(i * step), len(profile_data) - 1)]
+            for i in range(max_chart_points)
+        ]
         profile_data = downsampled
 
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db

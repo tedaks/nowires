@@ -2,8 +2,8 @@ import asyncio
 import logging
 import os
 import sys
+import time
 from contextlib import asynccontextmanager
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Optional
 
@@ -34,12 +34,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._timestamps: dict[str, list[float]] = {}
+        self._last_cleanup = time.time()
+        self._cleanup_interval = 300
 
     async def dispatch(self, request: Request, call_next):
         client = request.client.host if request.client else "unknown"
-        import time
 
         now = time.time()
+        if now - self._last_cleanup > self._cleanup_interval:
+            self._timestamps = {
+                c: ts
+                for c, ts in self._timestamps.items()
+                if any(now - t < self.window_seconds for t in ts)
+            }
+            self._last_cleanup = now
+
         if client not in self._timestamps:
             self._timestamps[client] = []
         self._timestamps[client] = [

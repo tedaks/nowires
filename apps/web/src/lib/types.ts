@@ -23,12 +23,15 @@ export interface P2PRequest {
 
 export interface ProfilePoint {
   d: number;
+  terrain: number;
   terrain_bulge: number;
   los: number;
   fresnel_upper: number;
   fresnel_lower: number;
   fresnel_60: number;
+  blocked: boolean;
   violates_f1: boolean;
+  violates_f60: boolean;
 }
 
 export interface Horizon {
@@ -67,7 +70,7 @@ export interface CoverageRequest {
   tx: { lat: number; lon: number; h_m: number };
   rx_h_m: number;
   freq_mhz: number;
-  radius_km: number | null;
+  radius_km: number;
   grid_size: number;
   profile_step_m?: number;
   terrain_spacing_m: number;
