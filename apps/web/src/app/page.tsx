@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, memo } from "react";
 import dynamic from "next/dynamic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -107,17 +107,17 @@ export default function Home() {
     setSites((prev) => [...prev, site]); setShowSites(true); setSiteNameDialogOpen(false);
   }
 
-  function handleSiteToggle(id: number, visible: boolean) {
+  function handleSiteToggle(id: string, visible: boolean) {
     mapRef.current?.setSiteVisibility(id, visible);
     setSites((prev) => prev.map((s) => (s.id === id ? { ...s, visible } : s)));
   }
 
-  function handleSiteOpacity(id: number, opacity: number) {
+  function handleSiteOpacity(id: string, opacity: number) {
     mapRef.current?.setSiteOpacity(id, opacity);
     setSites((prev) => prev.map((s) => (s.id === id ? { ...s, opacity } : s)));
   }
 
-  function handleSiteDelete(id: number) {
+  function handleSiteDelete(id: string) {
     mapRef.current?.removeSiteLayer(id);
     setSites((prev) => { const n = prev.filter((s) => s.id !== id); if (n.length === 0) setShowSites(false); return n; });
   }
@@ -154,7 +154,7 @@ export default function Home() {
           <div className="absolute bottom-4 left-4 right-4 z-10 bg-black/80 backdrop-blur-sm rounded-lg border border-white/10 p-3 max-h-[45vh]">
             <div className="flex justify-between items-center mb-1">
               <span className="text-xs font-medium">Profile</span>
-              <button className="text-xs text-gray-400 hover:text-white" onClick={() => setShowChart(false)}>✕</button>
+               <button className="text-xs text-gray-400 hover:text-white" onClick={() => setShowChart(false)} aria-label="Close">✕</button>
             </div>
             <ProfileChart result={p2pResult} />
           </div>
@@ -178,7 +178,7 @@ export default function Home() {
   );
 }
 
-function Sidebar({ activeTab, onTabChange, txCoords, rxCoords, onP2PResult, covTxCoords, onCoverageResult, onOverlayOpacity, onSaveSite, currentCoverageResult }: SidebarProps) {
+const Sidebar = memo(function Sidebar({ activeTab, onTabChange, txCoords, rxCoords, onP2PResult, covTxCoords, onCoverageResult, onOverlayOpacity, onSaveSite, currentCoverageResult }: SidebarProps) {
   return (
     <div className="w-72 flex-shrink-0 flex flex-col overflow-hidden border-r border-white/10">
       <div className="p-4 border-b border-white/10">
@@ -204,7 +204,7 @@ function Sidebar({ activeTab, onTabChange, txCoords, rxCoords, onP2PResult, covT
       </Tabs>
     </div>
   );
-}
+});
 
 type SidebarProps = {
   activeTab: TabId;

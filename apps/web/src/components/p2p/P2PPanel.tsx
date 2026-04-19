@@ -9,12 +9,7 @@ import { fnum, fint } from "@/lib/radio";
 import type { P2PResponse, LatLng } from "@/lib/types";
 import P2PResult from "./P2PResult";
 import SelectField from "@/components/coverage/SelectField";
-import { CLIMATE_OPTIONS } from "@/components/coverage/coverageForm";
-
-const POLARIZATION_OPTIONS = [
-  { label: "Vertical", value: "0" },
-  { label: "Horizontal", value: "1" },
-];
+import { CLIMATE_OPTIONS, POLARIZATION_OPTIONS } from "@/lib/options";
 
 const K_FACTOR_OPTIONS = [
   { label: "0.67 (sub-refractive)", value: "0.6667" },

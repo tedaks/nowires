@@ -7,9 +7,9 @@ import type { CoverageSite } from "@/lib/site";
 
 interface Props {
   sites: CoverageSite[];
-  onToggle: (id: number, visible: boolean) => void;
-  onOpacity: (id: number, opacity: number) => void;
-  onDelete: (id: number) => void;
+  onToggle: (id: string, visible: boolean) => void;
+  onOpacity: (id: string, opacity: number) => void;
+  onDelete: (id: string) => void;
   onClearAll: () => void;
   onClose: () => void;
 }
@@ -37,7 +37,7 @@ export default function SitesPanel({
     <div className="fixed bottom-4 right-4 w-64 bg-[#1a1a1a] border border-white/10 rounded-lg p-3 shadow-xl z-10 text-sm">
       <div className="flex justify-between items-center mb-2">
         <span className="font-medium">Multi-Site Coverage</span>
-        <Button variant="ghost" size="sm" onClick={onClose} className="h-5 w-5 p-0 text-gray-400 hover:text-white">
+         <Button variant="ghost" size="sm" onClick={onClose} className="h-5 w-5 p-0 text-gray-400 hover:text-white" aria-label="Close">
           ✕
         </Button>
       </div>
@@ -81,7 +81,8 @@ export default function SitesPanel({
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(site.id)}
-                className="h-4 w-4 p-0 text-[10px] text-gray-400 hover:text-red-400"
+                 className="h-4 w-4 p-0 text-[10px] text-gray-400 hover:text-red-400"
+                 aria-label="Delete site"
               >
                 ✕
               </Button>

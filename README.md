@@ -62,7 +62,7 @@ nowires/
 │   │   │   ├── config.py
 │   │   │   └── terrain.py
 │   │   └── requirements.txt
-│   └── web/                     # Next.js 15 App Router frontend
+│   └── web/                     # Next.js 16 App Router frontend
 │       └── src/
 │           ├── app/             # Routes and layout
 │           ├── components/      # Map, P2P, Coverage, UI

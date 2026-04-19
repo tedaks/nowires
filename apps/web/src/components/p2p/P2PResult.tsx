@@ -8,11 +8,13 @@ interface Props {
 }
 
 export default function P2PResult({ result }: Props) {
-  const lb = result.link_budget || {};
+  const lb = result.link_budget;
   const modeName = MODE_LABELS[result.mode] ?? "Unknown";
-  const margin = lb.margin_db;
+  const margin = lb?.margin_db;
   const prxClass =
-    margin >= 10 ? "text-green-400" : margin >= 0 ? "text-yellow-400" : "text-red-400";
+    margin != null
+      ? margin >= 10 ? "text-green-400" : margin >= 0 ? "text-yellow-400" : "text-red-400"
+      : "text-gray-400";
 
   return (
     <div className="space-y-2 text-sm">
@@ -27,11 +29,11 @@ export default function P2PResult({ result }: Props) {
         </div>
         <div>
           <div className="text-xs text-gray-400">Prx</div>
-          <div className={`font-mono ${prxClass}`}>{lb.prx_dbm} dBm</div>
+          <div className={`font-mono ${prxClass}`}>{lb?.prx_dbm ?? "N/A"} dBm</div>
         </div>
         <div>
           <div className="text-xs text-gray-400">Margin</div>
-          <div className={`font-mono ${prxClass}`}>{margin} dB</div>
+          <div className={`font-mono ${prxClass}`}>{margin ?? "N/A"} dB</div>
         </div>
       </div>
       <div>
@@ -41,19 +43,19 @@ export default function P2PResult({ result }: Props) {
       <div className="border-t border-white/10 pt-2 space-y-1 text-xs">
         <div className="flex justify-between">
           <span className="text-gray-400">EIRP</span>
-          <span>{lb.eirp_dbm} dBm</span>
+          <span>{lb?.eirp_dbm ?? "N/A"} dBm</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">FSPL</span>
-          <span>{lb.fspl_db} dB</span>
+          <span>{lb?.fspl_db ?? "N/A"} dB</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Excess loss</span>
-          <span>{lb.excess_loss_db} dB</span>
+          <span>{lb?.excess_loss_db ?? "N/A"} dB</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">RX sensitivity</span>
-          <span>{lb.rx_sensitivity_dbm} dBm</span>
+          <span>{lb?.rx_sensitivity_dbm ?? "N/A"} dBm</span>
         </div>
       </div>
     </div>

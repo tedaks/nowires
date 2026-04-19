@@ -90,29 +90,3 @@ export function buildRequest(
 }
 
 export type StringFieldKey = Exclude<keyof CoverageFormState, "antPattern">;
-
-export const FIELDS: { key: StringFieldKey; label: string }[] = [
-  { key: "txH", label: "TX height (m)" },
-  { key: "rxH", label: "RX height (m)" },
-  { key: "freq", label: "Freq (MHz)" },
-  { key: "polarization", label: "Polarization" },
-  { key: "climate", label: "Climate" },
-  { key: "timePct", label: "Time %" },
-  { key: "locPct", label: "Location %" },
-  { key: "sitPct", label: "Situation %" },
-  { key: "txPower", label: "TX Power (dBm)" },
-  { key: "txGain", label: "TX Gain (dBi)" },
-  { key: "rxGain", label: "RX Gain (dBi)" },
-  { key: "cableLoss", label: "Cable loss (dB)" },
-  { key: "rxSens", label: "RX sensitivity (dBm)" },
-];
-
-export const CLIMATE_OPTIONS = [
-  { label: "Equatorial", value: "0" },
-  { label: "Continental Subtropical", value: "1" },
-  { label: "Maritime Subtropical", value: "2" },
-  { label: "Desert", value: "3" },
-  { label: "Continental Temperate", value: "4" },
-  { label: "Maritime Temperate (Land)", value: "5" },
-  { label: "Maritime Temperate (Sea)", value: "6" },
-];

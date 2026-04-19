@@ -47,8 +47,8 @@ def compute_coverage(
     tx_h_m: float,
     rx_h_m: float,
     f_mhz: float,
-    radius_km: float,
     grid_size: int,
+    radius_km: float = 50.0,
     profile_step_m: float = 250.0,
     max_profile_pts: int = 75,
     tx_power_dbm: float = 43.0,
@@ -158,7 +158,7 @@ def compute_coverage(
                 loss_grid[i, j] = loss_db
                 prx_grid[i, j] = prx
     finally:
-        pool.shutdown(wait=True)
+        pool.shutdown(wait=False)
     out = render_coverage_result(
         prx_grid,
         loss_grid,

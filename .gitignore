@@ -7,7 +7,10 @@ venv/
 env/
 data/srtm1/*.hgt
 data/srtm1/*.zip
-*.png
+data/glo30/
+data/landcover/
+public/**/*.png
+src/**/*.png
 .DS_Store
 server.log
 

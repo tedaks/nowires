@@ -15,6 +15,7 @@ def compute_coverage_radius(
     tx_h_m: float,
     rx_h_m: float,
     f_mhz: float,
+    radius_km: float = 100.0,
     tx_power_dbm: float = 43.0,
     tx_gain_dbi: float = 8.0,
     rx_gain_dbi: float = 2.0,
@@ -36,7 +37,7 @@ def compute_coverage_radius(
 ) -> Dict[str, Any]:
     deg_per_m = 1.0 / 111320.0
     pad_deg = 2.0 * terrain_spacing_m * deg_per_m
-    search_max_m = 100.0 * 1000.0
+    search_max_m = radius_km * 1000.0
     padded_bbox_m = 2.0 * search_max_m + 4.0 * terrain_spacing_m
     if elev_grid_n is None:
         elev_grid_n = max(64, min(1024, int(padded_bbox_m / terrain_spacing_m) + 1))

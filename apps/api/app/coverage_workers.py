@@ -170,5 +170,3 @@ def _radius_worker(args):
         d += sweep_step_m
 
     return (bearing_deg, last_good)
-
-

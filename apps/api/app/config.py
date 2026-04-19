@@ -46,9 +46,9 @@ DEFAULT_PARAMS = {
     "epsilon": 15.0,
     "sigma": 0.005,
     "mdvar": 0,
-    "time": 0.5,
-    "location": 0.5,
-    "situation": 0.5,
+    "time": 50.0,
+    "location": 50.0,
+    "situation": 50.0,
 }
 
 ITM_DEFAULTS = {

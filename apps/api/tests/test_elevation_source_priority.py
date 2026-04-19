@@ -1,5 +1,6 @@
+from unittest.mock import patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
 
 from app.elevation_grid import _fetch_grid
 

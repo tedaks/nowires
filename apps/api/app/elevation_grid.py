@@ -57,8 +57,8 @@ class ElevationGrid:
         fx = (lon - self.min_lon) / self.d_lon
         if fy < 0 or fx < 0 or fy > self.n_lat - 1 or fx > self.n_lon - 1:
             return 0.0
-        y0 = int(lat // self.d_lat)
-        x0 = int(lon // self.d_lon)
+        y0 = int(fy)
+        x0 = int(fx)
         y1 = min(y0 + 1, self.n_lat - 1)
         x1 = min(x0 + 1, self.n_lon - 1)
         ty = fy - y0

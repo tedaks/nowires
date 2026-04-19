@@ -13,9 +13,9 @@ export interface MapViewHandle {
   removeCoverageOverlay(): void;
   setOverlayOpacity(opacity: number): void;
   addSiteLayer(site: CoverageSite): void;
-  removeSiteLayer(siteId: number): void;
-  setSiteVisibility(siteId: number, visible: boolean): void;
-  setSiteOpacity(siteId: number, opacity: number): void;
+  removeSiteLayer(siteId: string): void;
+  setSiteVisibility(siteId: string, visible: boolean): void;
+  setSiteOpacity(siteId: string, opacity: number): void;
   setTxMarker(lngLat: LatLng | null): void;
   setRxMarker(lngLat: LatLng | null): void;
   setCovMarker(lngLat: LatLng | null): void;
@@ -51,6 +51,7 @@ function _setupLayers(map: maplibregl.Map) {
   map.addLayer({ id: "horizons-layer", type: "circle", source: "horizons", paint: { "circle-radius": 6, "circle-color": "#f59e0b", "circle-stroke-color": "#0b0b0b", "circle-stroke-width": 2 } });
 }
 
+/** Convert bounds from API format [[min_lat, min_lon], [max_lat, max_lon]] to MapLibre image coordinates [[lon, lat], ...] clockwise. */
 function _boundsToCoords(bounds: [[number, number], [number, number]]): [[number, number], [number, number], [number, number], [number, number]] {
   const [[minLat, minLon], [maxLat, maxLon]] = bounds;
   return [[minLon, maxLat], [maxLon, maxLat], [maxLon, minLat], [minLon, minLat]];
@@ -165,7 +166,16 @@ const MapView = forwardRef<MapViewHandle, Props>(function MapView({ onMapClick }
     map.on("load", () => _setupLayers(map));
     map.on("click", (e) => onMapClickRef.current(e.lngLat));
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    return () => {
+      txMarkerRef.current?.remove();
+      rxMarkerRef.current?.remove();
+      covMarkerRef.current?.remove();
+      txMarkerRef.current = null;
+      rxMarkerRef.current = null;
+      covMarkerRef.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   return <div ref={containerRef} className="w-full h-full min-h-[400px]" />;

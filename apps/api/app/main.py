@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -34,30 +35,32 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._timestamps: dict[str, list[float]] = {}
         self._last_cleanup = time.time()
         self._cleanup_interval = 300
+        self._lock = asyncio.Lock()
 
     async def dispatch(self, request: Request, call_next):
         client = request.client.host if request.client else "unknown"
 
         now = time.time()
-        if now - self._last_cleanup > self._cleanup_interval:
-            self._timestamps = {
-                c: ts
-                for c, ts in self._timestamps.items()
-                if any(now - t < self.window_seconds for t in ts)
-            }
-            self._last_cleanup = now
+        async with self._lock:
+            if now - self._last_cleanup > self._cleanup_interval:
+                self._timestamps = {
+                    c: ts
+                    for c, ts in self._timestamps.items()
+                    if any(now - t < self.window_seconds for t in ts)
+                }
+                self._last_cleanup = now
 
-        if client not in self._timestamps:
-            self._timestamps[client] = []
-        self._timestamps[client] = [
-            t for t in self._timestamps[client] if now - t < self.window_seconds
-        ]
-        if len(self._timestamps[client]) >= self.max_requests:
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Rate limit exceeded. Try again later."},
-            )
-        self._timestamps[client].append(now)
+            if client not in self._timestamps:
+                self._timestamps[client] = []
+            self._timestamps[client] = [
+                t for t in self._timestamps[client] if now - t < self.window_seconds
+            ]
+            if len(self._timestamps[client]) >= self.max_requests:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Rate limit exceeded. Try again later."},
+                )
+            self._timestamps[client].append(now)
         return await call_next(request)
 
 
@@ -94,7 +97,9 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.environ.get(
+        "DEV_ORIGINS", "http://localhost:3000,http://localhost:3001"
+    ).split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -112,13 +117,13 @@ class P2PRequest(BaseModel):
     rx: Coordinates
     freq_mhz: float = Field(default=300.0, gt=0, le=40000)
     polarization: int = Field(default=0, ge=0, le=1)
-    climate: int = Field(default=1, ge=0, le=7)
+    climate: int = Field(default=1, ge=0, le=6)
     N0: float = Field(default=301.0, gt=0)
     epsilon: float = Field(default=15.0, gt=0)
     sigma: float = Field(default=0.005, gt=0)
-    time_pct: float = Field(default=50.0, gt=0, le=100)
-    location_pct: float = Field(default=50.0, gt=0, le=100)
-    situation_pct: float = Field(default=50.0, gt=0, le=100)
+    time_pct: float = Field(default=50.0, gt=0, lt=100)
+    location_pct: float = Field(default=50.0, gt=0, lt=100)
+    situation_pct: float = Field(default=50.0, gt=0, lt=100)
     k_factor: float = Field(default=4.0 / 3.0, gt=0)
     tx_power_dbm: float = Field(default=43.0)
     tx_gain_dbi: float = Field(default=8.0)
@@ -136,15 +141,15 @@ class CoverageRequest(BaseModel):
     profile_step_m: float = Field(default=250.0, gt=0)
     terrain_spacing_m: float = Field(default=300.0, gt=0)
     elev_grid_n: Optional[int] = None
-    elevation_source: str = Field(default="glo30")
+    elevation_source: str = Field(default="glo30", pattern=r"^(glo30|srtm1|api)$")
     polarization: int = Field(default=0, ge=0, le=1)
-    climate: int = Field(default=1, ge=0, le=7)
+    climate: int = Field(default=1, ge=0, le=6)
     N0: float = Field(default=301.0, gt=0)
     epsilon: float = Field(default=15.0, gt=0)
     sigma: float = Field(default=0.005, gt=0)
-    time_pct: float = Field(default=50.0, gt=0, le=100)
-    location_pct: float = Field(default=50.0, gt=0, le=100)
-    situation_pct: float = Field(default=50.0, gt=0, le=100)
+    time_pct: float = Field(default=50.0, gt=0, lt=100)
+    location_pct: float = Field(default=50.0, gt=0, lt=100)
+    situation_pct: float = Field(default=50.0, gt=0, lt=100)
     tx_power_dbm: float = Field(default=43.0)
     tx_gain_dbi: float = Field(default=8.0)
     rx_gain_dbi: float = Field(default=2.0)
@@ -185,7 +190,7 @@ async def p2p_endpoint(req: P2PRequest):
 async def coverage_endpoint(req: CoverageRequest):
     try:
         result = await asyncio.wait_for(
-            asyncio.get_event_loop().run_in_executor(
+            asyncio.get_running_loop().run_in_executor(
                 None,
                 lambda: compute_coverage(
                     tx_lat=req.tx.lat,
@@ -193,8 +198,8 @@ async def coverage_endpoint(req: CoverageRequest):
                     tx_h_m=req.tx.h_m,
                     rx_h_m=req.rx_h_m,
                     f_mhz=req.freq_mhz,
-                    radius_km=req.radius_km,
                     grid_size=req.grid_size,
+                    radius_km=req.radius_km or 50.0,
                     profile_step_m=req.profile_step_m,
                     tx_power_dbm=req.tx_power_dbm,
                     tx_gain_dbi=req.tx_gain_dbi,
@@ -221,16 +226,16 @@ async def coverage_endpoint(req: CoverageRequest):
         return result
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Coverage computation timed out")
-    except Exception as e:
+    except Exception:
         logger.exception("Coverage computation failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/coverage-radius")
 async def coverage_radius_endpoint(req: CoverageRequest):
     try:
         result = await asyncio.wait_for(
-            asyncio.get_event_loop().run_in_executor(
+            asyncio.get_running_loop().run_in_executor(
                 None,
                 lambda: compute_coverage_radius(
                     tx_lat=req.tx.lat,
@@ -238,6 +243,7 @@ async def coverage_radius_endpoint(req: CoverageRequest):
                     tx_h_m=req.tx.h_m,
                     rx_h_m=req.rx_h_m,
                     f_mhz=req.freq_mhz,
+                    radius_km=req.radius_km or 100.0,
                     tx_power_dbm=req.tx_power_dbm,
                     tx_gain_dbi=req.tx_gain_dbi,
                     rx_gain_dbi=req.rx_gain_dbi,
@@ -263,9 +269,9 @@ async def coverage_radius_endpoint(req: CoverageRequest):
         return result
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Coverage radius computation timed out")
-    except Exception as e:
+    except Exception:
         logger.exception("Coverage radius computation failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 if __name__ == "__main__":

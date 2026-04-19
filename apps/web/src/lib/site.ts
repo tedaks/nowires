@@ -15,7 +15,7 @@ export interface TxCoords {
 }
 
 export interface CoverageSite {
-  id: number;
+  id: string;
   name: string;
   tx: TxCoords;
   coverage_data: CoverageResponse;
@@ -24,8 +24,6 @@ export interface CoverageSite {
   opacity: number;
 }
 
-let _nextId = 1;
-
 export function createSite(
   name: string,
   tx: TxCoords,
@@ -33,7 +31,7 @@ export function createSite(
   index: number
 ): CoverageSite {
   return {
-    id: _nextId++,
+    id: crypto.randomUUID(),
     name,
     tx,
     coverage_data,

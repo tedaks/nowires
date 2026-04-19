@@ -8,7 +8,8 @@ import type { CoverageResponse } from "@/lib/types";
 import FormField from "./FormField";
 import SelectField from "./SelectField";
 import CoverageResults from "./CoverageResults";
-import { DEFAULTS, CLIMATE_OPTIONS, buildRequest, type CoverageFormState } from "./coverageForm";
+import { DEFAULTS, buildRequest, type CoverageFormState } from "./coverageForm";
+import { CLIMATE_OPTIONS, POLARIZATION_OPTIONS } from "@/lib/options";
 
 const GRID_SIZE_OPTIONS = [
   { label: "64 (Fast)", value: "64" },
@@ -25,11 +26,6 @@ const TERRAIN_SPACING_OPTIONS = [
   { label: "300 m (Standard)", value: "300" },
   { label: "400 m (Coarse)", value: "400" },
   { label: "500 m (Sparse)", value: "500" },
-];
-
-const POLARIZATION_OPTIONS = [
-  { label: "Vertical", value: "0" },
-  { label: "Horizontal", value: "1" },
 ];
 
 const ELEV_SOURCE_OPTIONS = [
@@ -75,7 +71,10 @@ export default function CoveragePanel({ txCoords, onResult, onOverlayOpacity }: 
     return () => clearTimeout(t);
   }, [error]);
 
-  const formRequest = () => buildRequest(form, txCoords!, computedRadius);
+  const formRequest = () => {
+    if (!txCoords) throw new Error("TX coordinates not set");
+    return buildRequest(form, txCoords, computedRadius);
+  };
 
   async function handleComputeRadius() {
     if (!txCoords) { setError("Select TX location first"); return; }
