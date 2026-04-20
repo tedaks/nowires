@@ -32,12 +32,11 @@ frontend/
 docs/
 .swc/
 
-# Code review
-bugs-m25.md
-bugs-glm51.md
-
 # Test artifacts
 .coverage
 .pytest_cache/
 .ruff_cache/
 playwright-report/
+
+# dev
+dev/
