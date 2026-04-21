@@ -30,3 +30,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Corrected ITM time/location/situation parameter scaling
 - Fixed elevation source priority chain (GLO30 → SRTM1 → HGT → API)
 - Fixed climate enum indexing (API uses 0-indexed, ITM uses 1-indexed)
+- Fixed polarization inversion bug (API uses 0=Horizontal, 1=Vertical matching ITM convention)
