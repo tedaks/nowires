@@ -47,9 +47,8 @@ def itm_p2p_loss(
 ) -> ITMResult:
     terrain = TerrainProfile.from_pfl(profile)
 
-    # API uses 0-indexed climate (0–6), ITM Climate enum is 1-indexed (1–7)
     climate_enum = Climate(int(climate) + 1)
-    pol_enum = Polarization(1 - int(polarization))
+    pol_enum = Polarization(int(polarization))
 
     try:
         result = predict_p2p(
